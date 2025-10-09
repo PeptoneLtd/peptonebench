@@ -28,7 +28,7 @@ def process_boltz_result(
     """
     Runs Pepsi-SAXS forward model on boltz1 or boltz2 predictions. This code assumes boltz was run as follows:
 
-    while  IFS=, read -r label sequence ph gscores ; do
+    while  IFS=, read -r label sequence ph ; do
         echo -n ">A|protein\n$sequence" > $label.fasta
         boltz predict $label.fasta --cache /cache --use_msa_server --out_dir generator_dir/$label \
             --diffusion_samples $num_samples --output_format pdb
@@ -143,7 +143,7 @@ def process_esmfold_result(
     """
     Runs Pepsi-SAXS forward model on esmfold predictions. This code assumes esmfold was run as follows:
 
-    while  IFS=, read -r label sequence ph gscores ; do
+    while  IFS=, read -r label sequence ph ; do
         echo -n ">A|protein\n$sequence" > $label.fasta
         esm-fold -i $label.fasta -o generator_dir/${label}
     done < PeptoneDB-SAXS-sequences.csv
@@ -202,7 +202,7 @@ def process_bioemu_result(
     Runs Pepsi-SAXS forward model on a pdb+xtc pair generated using bioemu sidechain reconstruction.
     This code assumes bioemu was run as follows:
 
-    while  IFS=, read -r label sequence ph gscores ; do
+    while  IFS=, read -r label sequence ph ; do
         python -m bioemu.sample --sequence "$sequence" --num_samples $num_samples --filter_samples=False \
             --output_dir generator_dir/backbone/$label/
         python -m bioemu.sidechain_relax --no-md-equil --md-protocol md_equil \
@@ -328,7 +328,7 @@ def process_idpsam_result(
     """
     Runs Pepsi-SAXS forward model on idpsam prediction. This code assumes idpsam was run as follows:
 
-    while  IFS=, read -r label sequence ph gscores ; do
+    while  IFS=, read -r label sequence ph ; do
        generate_ensemble.py -c config/models.yaml -s $seq -o generator_dir/$label/$label -b 25 -n 1000 -a -d cuda
     done < PeptoneDB-SAXS-sequences.csv
 
