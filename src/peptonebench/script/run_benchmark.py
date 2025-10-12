@@ -54,39 +54,39 @@ def get_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-f",
-        "--generator_dir",
+        "--generator-dir",
         type=str,
         nargs="+",
         required=True,
         help="folder with generated ensembles to be reweighted",
     )
     parser.add_argument(
-        "--gen_filename",
+        "--gen-filename",
         type=str,
         default=DEFAULTS["gen_filename"],
         help="name pattern of generated ensemble forward models files",
     )
     parser.add_argument(
-        "--ess_threshold",
+        "--ess-threshold",
         type=float,
         default=DEFAULTS["ess_threshold"],
         help="ESS threshold. Typically 10% of the number of samples.",
     )
     parser.add_argument(
-        "--filter_unphysical_frames",
+        "--filter-unphysical-frames",
         action="store_true",
         help="assign NaN weights to unphysical frames from the trajectory, bioemu style",
     )
-    parser.add_argument("--no-filter_unphysical_frames", dest="filter_unphysical_frames", action="store_false")
+    parser.add_argument("--no-filter-unphysical-frames", dest="filter_unphysical_frames", action="store_false")
     parser.set_defaults(filter_unphysical_frames=DEFAULTS["filter_unphysical_frames"])
     parser.add_argument(
-        "--plots_dir",
+        "--plots-dir",
         type=str,
         default=DEFAULTS["plots_dir"],
         help="directory to save fitting plots. If empty, no plots are saved",
     )
     parser.add_argument(
-        "--consistency_check",
+        "--consistency-check",
         action="store_true",
         help="perform sequence consistency check between generated ensembles and DB entries",
     )
@@ -99,33 +99,36 @@ def get_args() -> argparse.Namespace:
     )
 
     ## CS specific arguments
-    parser.add_argument("--cs_predictor", type=str, default=DEFAULTS["cs_predictor"], help="chemical shift predictor")
+    parser.add_argument("--cs-predictor", type=str, default=DEFAULTS["cs_predictor"], help="chemical shift predictor")
     parser.add_argument(
-        "--selected_cs_types",
+        "--selected-cs-types",
         type=str,
         nargs="+",
         default=DEFAULTS["selected_cs_types"],
         help="list of chemical shifts types to consider. Default is to use all available ('all').",
     )
-    parser.add_argument("--bmrb_data", type=str, default=DEFAULTS["bmrb_data"], help="folder with BMRB data")
+    parser.add_argument("--bmrb-data", type=str, default=DEFAULTS["bmrb_data"], help="folder with BMRB data")
     parser.add_argument(
-        "--db_cs", type=str, default=DEFAULTS["db_cs"], help="path to PeptoneDB-CS.csv file, used for gscores"
+        "--db-cs",
+        type=str,
+        default=DEFAULTS["db_cs"],
+        help="path to PeptoneDB-CS.csv file, used for gscores",
     )
 
     ## SAXS specific arguments
-    parser.add_argument("--saxs_predictor", type=str, default=DEFAULTS["saxs_predictor"], help="SAXS predictor")
-    parser.add_argument("--sasbdb_data", type=str, default=DEFAULTS["sasbdb_data"], help="path to SASBDB clean data")
-    parser.add_argument("--db_saxs", type=str, default=DEFAULTS["db_saxs"], help="path to PeptoneDB-SAXS.csv file")
+    parser.add_argument("--saxs-predictor", type=str, default=DEFAULTS["saxs_predictor"], help="SAXS predictor")
+    parser.add_argument("--sasbdb-data", type=str, default=DEFAULTS["sasbdb_data"], help="path to SASBDB clean data")
+    parser.add_argument("--db-saxs", type=str, default=DEFAULTS["db_saxs"], help="path to PeptoneDB-SAXS.csv file")
 
     ## Integrative specific arguments
     parser.add_argument(
-        "--integrative_data",
+        "--integrative-data",
         type=str,
         default=DEFAULTS["integrative_data"],
         help="path to PeptoneDB-Integrative dataset",
     )
     parser.add_argument(
-        "--db_integrative",
+        "--db-integrative",
         type=str,
         default=DEFAULTS["db_integrative"],
         help="path to PeptoneDB-Integrative.csv file, used for gscores",
@@ -175,7 +178,7 @@ def cs_reweight_dir(
             )
             continue
 
-        if len(labels[0].split("_")) == 4:  # TODO: check all labels
+        if len(labels[0].split("_")) == 4:  # TODO: check all labels not just the first one
             logger.info("Detected BMRB labels")
             labels = sorted(labels, key=lambda x: (len(x), x.split("_")[0]))
             data_path = bmrb_data
@@ -189,19 +192,26 @@ def cs_reweight_dir(
             data_path = integrative_data
             db_csv = db_integrative
 
-        info_df = pd.read_csv(os.path.join(data_path, db_csv), index_col="label")  # TODO: not needed for SAXS
-        if consistency_check:
-            logger.info(f"Performing consistency check between ensembles and '{db_csv}'")
-            for label in labels:
-                assert get_sequence_from_traj(os.path.join(generator_dir, label)) == info_df.loc[label, "sequence"], (
-                    f"Consistency check failed for label {label}"
-                )
-            logger.info("Consistency check passed successfully")
-        if kind == "cs":
-            gscores_dct = {
-                label: np.asanyarray(json.loads(info_df.loc[label, "gscores"]), dtype=float) for label in info_df.index
-            }
-        del info_df
+        if consistency_check or kind == "cs":
+            pep_df = pd.read_csv(os.path.join(data_path, db_csv), index_col="label")
+            if consistency_check:
+                logger.info(f"Performing consistency check between ensembles and '{db_csv}'")
+                for label in labels:
+                    assert (
+                        get_sequence_from_traj(os.path.join(generator_dir, label)) == pep_df.loc[label, "sequence"]
+                    ), f"Consistency check failed for label {label}"
+                logger.info("Consistency check passed successfully")
+            if kind == "cs":
+                gscores_dct = {
+                    label: np.asarray(json.loads(pep_df.loc[label, "gscores"]), dtype=float) for label in pep_df.index
+                }
+                for label in labels:
+                    if label not in gscores_dct:
+                        logger.error(
+                            f"{label} not found in {db_csv}: not using gscores to balance the uncertainties, for all labels"
+                        )
+                        gscores_dct = dict.fromkeys(labels, value=None)
+            del pep_df
 
         n_jobs = min(n_jobs, len(labels))
         logger.info(f"Processing {len(labels)} labels in parallel using {n_jobs} jobs...")
@@ -253,7 +263,7 @@ def cs_reweight_dir(
             f.write(",".join(labels) + "\n")
             for i in range(n_samples):
                 f.write(",".join([str(results[j]["weights"][i]) for j in range(len(labels))]) + "\n")
-    #TODO: also save a scatter plot with LOWESS and final score
+    # TODO: also save a scatter plot with LOWESS and final score
     logger.info("Done\n")
 
 
