@@ -6,7 +6,14 @@ import numpy as np
 import pandas as pd
 
 from . import reweighting
-from .constants import I_SAXS_FILENAME, INTEGRATIVE_DATA, SASBDB_DATA, SASBDB_FILENAME, SAXS_FILENAME
+from .constants import (
+    DEFAULT_SAXS_PREDICTOR,
+    GEN_FILENAME,
+    I_SAXS_FILENAME,
+    INTEGRATIVE_DATA,
+    SASBDB_DATA,
+    SASBDB_FILENAME,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -114,10 +121,12 @@ def std_Igen_and_Iexp(
 def std_Igen_and_Iexp_from_label(
     label: str,
     generator_dir: str,
+    predictor: str = DEFAULT_SAXS_PREDICTOR,
     data_path: str = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     exp_df = get_exp_df_from_label(label, data_path)
-    gen_df = pd.read_csv(f"{generator_dir}/{SAXS_FILENAME.replace('LABEL', label)}", index_col=0)
+    filename = os.path.join(generator_dir, GEN_FILENAME.replace("LABEL", label).replace("PREDICTOR", predictor))
+    gen_df = pd.read_csv(filename, index_col=0)
     # pandas adds .N to duplicate column names, so astype(float) can fail
     assert np.allclose(exp_df["q"], [float(".".join(x.split(".")[:2])) for x in gen_df.columns]), (
         f"Q values do not match: {generator_dir}, {label}"
@@ -199,6 +208,7 @@ def reweight_saxs(
 def reweight_saxs_from_label(
     label: str,
     generator_dir: str,
+    predictor: str = DEFAULT_SAXS_PREDICTOR,
     data_path: str = None,
     filter_unphysical_frames: bool = False,
     ess_abs_threshold: float = 10.0,
@@ -210,6 +220,7 @@ def reweight_saxs_from_label(
     std_Igen, std_Iexp = std_Igen_and_Iexp_from_label(
         label=label,
         generator_dir=generator_dir,
+        predictor=predictor,
         data_path=data_path,
     )
 

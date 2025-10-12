@@ -1,21 +1,24 @@
-# FIXME: these should probably be in a config file
-BMRB_DATA = "/raid/app/michele/IDPgen/peptonebench/datasets/PeptoneDB-CS/bmrb-data"
-SASBDB_DATA = "/raid/app/michele/IDPgen/peptonebench/datasets/PeptoneDB-SAXS/sasbdb-clean_data"
-INTEGRATIVE_DATA = "/raid/app/michele/IDPgen/peptonebench/datasets/PeptoneDB-Integrative/"
-DB_CS = "/raid/app/michele/IDPgen/peptonebench/datasets/PeptoneDB-CS/PeptoneDB-CS.csv"
-DB_SAXS = "/raid/app/michele/IDPgen/peptonebench/datasets/PeptoneDB-SAXS/PeptoneDB-SAXS.csv"
-DB_INTEGRATIVE = "/raid/app/michele/IDPgen/peptonebench/datasets/PeptoneDB-Integrative/PeptoneDB-Integrative.csv"
+import os.path
 
-SASBDB_FILENAME = "LABEL-bift.dat"
-I_SAXS_FILENAME = "LABEL/SAXS_bift.dat"
-SAXS_FILENAME = "Pepsi-LABEL/saxs_curves.csv"
+DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../datasets"))
 
-DEFAULT_PREDICTOR = "UCBshift"
-DEFAULT_SELECTED_CS_TYPES = None
+DB_CS = os.path.join(DB_PATH, "PeptoneDB-CS/PeptoneDB-CS.csv")
+DB_SAXS = os.path.join(DB_PATH, "PeptoneDB-SAXS/PeptoneDB-SAXS.csv")
+DB_INTEGRATIVE = os.path.join(DB_PATH, "PeptoneDB-Integrative/PeptoneDB-Integrative.csv")
 
-CS_FILENAME = "PREDICTOR-LABEL.csv"
+BMRB_DATA = os.path.join(DB_PATH, "PeptoneDB-CS/bmrb-data")
+SASBDB_DATA = os.path.join(DB_PATH, "PeptoneDB-SAXS/sasbdb-clean_data")
+INTEGRATIVE_DATA = os.path.join(DB_PATH, "PeptoneDB-Integrative")
+
 BMRB_FILENAME = "bmrENTRYID_3.str"
+SASBDB_FILENAME = "LABEL-bift.dat"
 I_CS_FILENAME = "LABEL/CS.dat"
+I_SAXS_FILENAME = "LABEL/SAXS_bift.dat"
+
+GEN_FILENAME = "PREDICTOR-LABEL.csv"
+DEFAULT_SAXS_PREDICTOR = "Pepsi"
+DEFAULT_CS_PREDICTOR = "UCBshift"
+DEFAULT_SELECTED_CS_TYPES = None
 
 ## from https://doi.org/10.1007/s10858-018-0166-5 (cross-validation RMSE)
 POTENCI_UNCERTAINTIES = {"C": 0.1861, "CA": 0.1862, "CB": 0.1677, "N": 0.5341, "H": 0.0735, "HA": 0.0319, "HB": 0.0187}

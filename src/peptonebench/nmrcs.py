@@ -14,12 +14,12 @@ from . import reweighting
 from .constants import (
     BMRB_DATA,
     BMRB_FILENAME,
-    CS_FILENAME,
     CS_UNCERTAINTIES,
-    DEFAULT_PREDICTOR,
-    INTEGRATIVE_DATA,
-    I_CS_FILENAME,
     DB_CS,
+    DEFAULT_CS_PREDICTOR,
+    GEN_FILENAME,
+    I_CS_FILENAME,
+    INTEGRATIVE_DATA,
     ONE_TO_THREE_AA,
     OUTLIERS_FILTER,
     POTENCI_UNCERTAINTIES,
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 def extended_cs_uncertainties(
     cs_keys: list[tuple[int, str]],
     gscores: list[float] = None,
-    ord_unc: dict[str, float] = CS_UNCERTAINTIES[DEFAULT_PREDICTOR],
+    ord_unc: dict[str, float] = CS_UNCERTAINTIES[DEFAULT_CS_PREDICTOR],
     disord_unc: dict[str, float] = POTENCI_UNCERTAINTIES,
 ) -> np.ndarray:
     if gscores is None:
@@ -190,10 +190,10 @@ def read_generated_cs(filename: str) -> pd.DataFrame:  # shape (n_samples, n_obs
 def generated_cs_from_label(
     label: str,
     generator_dir: str,
-    predictor: str = DEFAULT_PREDICTOR,
+    predictor: str = DEFAULT_CS_PREDICTOR,
 ) -> pd.DataFrame:  # shape (n_samples, n_obs)
     """Get chemical shifts for a specific generator and label."""
-    filename = os.path.join(generator_dir, CS_FILENAME.replace("LABEL", label).replace("PREDICTOR", predictor))
+    filename = os.path.join(generator_dir, GEN_FILENAME.replace("LABEL", label).replace("PREDICTOR", predictor))
     return read_generated_cs(filename)
 
 
@@ -201,7 +201,7 @@ def std_delta_cs(
     gen_cs: pd.DataFrame,
     exp_cs: dict[tuple[int, str], float],
     selected_cs_types: list[str] = None,
-    cs_uncertainties: dict[str, float] = CS_UNCERTAINTIES[DEFAULT_PREDICTOR],
+    cs_uncertainties: dict[str, float] = CS_UNCERTAINTIES[DEFAULT_CS_PREDICTOR],
     gscores: np.ndarray = None,
     return_keys: bool = False,
 ) -> np.ndarray | tuple[np.ndarray, list[tuple[int, str]]]:  # shape (n_samples, n_obs)
@@ -227,7 +227,7 @@ def std_delta_cs(
 def std_delta_cs_from_label(
     label: str,
     generator_dir: str,
-    predictor: str = DEFAULT_PREDICTOR,
+    predictor: str = DEFAULT_CS_PREDICTOR,
     data_path: str = None,
     selected_cs_types: list[str] = None,
     gscores: np.ndarray = None,
@@ -318,7 +318,7 @@ def reweight_cs(
 def reweight_cs_from_label(
     label: str,
     generator_dir: str,
-    predictor: str = DEFAULT_PREDICTOR,
+    predictor: str = DEFAULT_CS_PREDICTOR,
     data_path: str = None,
     selected_cs_types: list[str] = None,
     gscores: np.ndarray = None,
