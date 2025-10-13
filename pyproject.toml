@@ -10,7 +10,9 @@ authors = []
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "git+https://github.com/invemichele-peptone/trizod.git@playground"
+    ]
 
 [project.scripts]
 PeptoneBench = "peptonebench.scripts.run_benchmark:main"
