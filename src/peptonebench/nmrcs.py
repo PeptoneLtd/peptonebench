@@ -146,23 +146,6 @@ def experimental_cs_from_label(
         return experimental_cs_from_integrative_label(label, data_path=data_path, filter_outliers=filter_outliers)
 
 
-def label_trajectory_consistency_check(
-    label: str,
-    generator_dir: str,
-    info: pd.DataFrame,
-    trj_ext: str = ".pdb",
-) -> bool:
-    trj_file = os.path.join(generator_dir, label + trj_ext)
-    if not os.path.exists(trj_file):
-        old_trj_file = trj_file
-        trj_file = os.path.join(generator_dir, label + "-0" + trj_ext)
-        if not os.path.exists(trj_file):
-            raise FileNotFoundError(f"trajectory file not found: {old_trj_file}, {trj_file}")
-    trj_sequence = md.load_frame(trj_file, index=0).top.to_fasta()[0]
-
-    return trj_sequence == info.loc[label, "sequence"]
-
-
 def read_generated_cs(filename: str) -> pd.DataFrame:  # shape (n_samples, n_obs)
     """Read generated chemical shifts from file."""
     assert filename.endswith(".csv"), "expected .csv file"

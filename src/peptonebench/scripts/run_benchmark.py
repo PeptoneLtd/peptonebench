@@ -199,7 +199,7 @@ def reweight_dir(
                 logger.info(f"Performing consistency check between ensembles and '{db_csv}'")
                 for label in labels:
                     assert (
-                        reweighting.get_sequence_from_traj(os.path.join(generator_dir, label))
+                        reweighting.get_sequence_from_ensemble(os.path.join(generator_dir, label))
                         == pep_df.loc[label, "sequence"]
                     ), f"Consistency check failed for label {label}"
                 logger.info("Consistency check passed successfully")

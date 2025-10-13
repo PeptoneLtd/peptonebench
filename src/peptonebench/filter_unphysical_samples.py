@@ -102,18 +102,20 @@ def filter_unphysical_traj(
     return traj.slice(matches_all, copy=True)
 
 
+filter_unphysical_samples = filter_unphysical_traj
+
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Filter unphysical frames from a trajectory.")
-    parser.add_argument("--trajectory", type=str, required=True, help="Path to the trajectory file")
+    parser = argparse.ArgumentParser(description="Filter unphysical samples from an ensemble.")
+    parser.add_argument("--ensemble", type=str, required=True, help="Path to the protein ensemble file")
     parser.add_argument("--topology", type=str, default="", required=False, help="Path to the topology file, if needed")
     parser.add_argument("--outfile", type=str, required=True, help="Path to the output file")
     args = parser.parse_args()
 
-    print(f"Loading trajectory from {args.trajectory} with topology {args.topology if args.topology else 'None'}")
-    trj = mdtraj.load(args.trajectory) if len(args.topology) == 0 else mdtraj.load(args.trajectory, top=args.topology)
-    print(f"Loaded trajectory with {len(trj)} frames.")
-    filtered_traj = filter_unphysical_traj(trj)
-    print(f"Filtered trajectory has {len(filtered_traj)} frames.")
-    filtered_traj.save(args.outfile)
+    print(f"Loading protein ensemble from {args.ensemble} with topology {args.topology if args.topology else 'None'}")
+    ens = mdtraj.load(args.ensemble) if len(args.topology) == 0 else mdtraj.load(args.ensemble, top=args.topology)
+    print(f"Loaded ensemble with {len(ens)} samples.")
+    filtered_ens = filter_unphysical_samples(ens)
+    print(f"Filtered ensemble has {len(filtered_ens)} samples.")
+    filtered_ens.save(args.outfile)

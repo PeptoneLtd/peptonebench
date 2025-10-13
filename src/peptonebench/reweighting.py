@@ -11,7 +11,7 @@ from scipy.interpolate import PchipInterpolator
 from scipy.optimize import minimize, root_scalar
 from scipy.special import logsumexp, softmax
 
-from .filter_unphysical_traj import _get_physical_traj_indices
+from .filter_unphysical_samples import _get_physical_traj_indices
 
 logger = logging.getLogger(__name__)
 
@@ -256,39 +256,39 @@ def plot_reweighting_results(results: dict, title: str = "", ess_target: float =
         plt.show()
 
 
-def get_traj_top_filenames(traj_filename: str) -> tuple[str, str]:
-    """Assuming trajectories in xtc+pdb, pdb, or h5 format.
-    traj_filename can be given without extension."""
-    top_filename = None
-    if len(os.path.basename(traj_filename).split(".")) == 1:
-        if os.path.exists(traj_filename + ".xtc"):
-            traj_filename += ".xtc"
-        else:
-            traj_filename += ".pdb"
-    if traj_filename.endswith(".xtc"):
-        top_filename = traj_filename.replace(".xtc", ".pdb")
-    return traj_filename, top_filename
-
-
-def get_physical_frames_mask(traj_filename: str) -> np.ndarray:
+def get_ens_top_filenames(ens_filename: str) -> tuple[str, str]:
     """Assuming ensembles in xtc+pdb, pdb, or h5 format.
-    traj_filename can be given without extension."""
-    traj_filename, top_filename = get_traj_top_filenames(traj_filename)
-    trj = md.load(traj_filename, top=top_filename)
+    ens_filename can be given without extension."""
+    top_filename = None
+    if len(os.path.basename(ens_filename).split(".")) == 1:
+        if os.path.exists(ens_filename + ".xtc"):
+            ens_filename += ".xtc"
+        else:
+            ens_filename += ".pdb"
+    if ens_filename.endswith(".xtc"):
+        top_filename = ens_filename.replace(".xtc", ".pdb")
+    return ens_filename, top_filename
 
-    mask = np.zeros(len(trj), dtype=bool)
-    mask[_get_physical_traj_indices(trj)] = True
+
+def get_physical_samples_mask(ens_filename: str) -> np.ndarray:
+    """Assuming ensembles in xtc+pdb, pdb, or h5 format.
+    ens_filename can be given without extension."""
+    ens_filename, top_filename = get_ens_top_filenames(ens_filename)
+    ens = md.load(ens_filename, top=top_filename)
+
+    mask = np.zeros(len(ens), dtype=bool)
+    mask[_get_physical_traj_indices(ens)] = True
     return mask
 
 
-def get_sequence_from_traj(traj_filename: str) -> str:
+def get_sequence_from_ensemble(ens_filename: str) -> str:
     """Assuming ensembles in xtc+pdb, pdb, or h5 format.
-    traj_filename can be given without extension."""
+    ens_filename can be given without extension."""
 
-    traj_filename, top_filename = get_traj_top_filenames(traj_filename)
-    trj = md.load_frame(traj_filename, top=top_filename, index=0)
+    ens_filename, top_filename = get_ens_top_filenames(ens_filename)
+    ens = md.load_frame(ens_filename, top=top_filename, index=0)
 
-    return trj.top.to_fasta()[0]
+    return ens.top.to_fasta()[0]
 
 
 def benchmark_reweighting(
@@ -325,8 +325,8 @@ def benchmark_reweighting(
     if tot_invalid_samples > 0:
         logger.info(f"{label:>7} - {tot_invalid_samples} samples were discarded due to NaN in forward model data")
     if filter_unphysical_frames:
-        valid_frames = get_physical_frames_mask(os.path.join(generator_dir, label))
-        logger.info(f"{label:>7} - traj filtered from {n_samples} to {sum(valid_frames)} samples")
+        valid_frames = get_physical_samples_mask(os.path.join(generator_dir, label))
+        logger.info(f"{label:>7} - ensemble filtered from {n_samples} to {sum(valid_frames)} samples")
         assert len(valid_frames) == n_samples, f"{label:>7} - Mismatch length between ensemble and forward model data"
         nan_mask = nan_mask & valid_frames
     results["n_samples"] = sum(nan_mask)
