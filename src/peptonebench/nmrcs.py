@@ -2,7 +2,6 @@ import logging
 import os.path
 import subprocess
 
-import mdtraj as md
 import numpy as np
 import pandas as pd
 import pynmrstar
@@ -224,12 +223,12 @@ def compute_random_coil_cs(
     return {(k[0], kk): vv for k, v in dct_cs.items() for kk, vv in v.items()}
 
 
-def random_coil_cs_from_bmrb_label(
+def random_coil_cs_from_bmrb_label(  # TODO: make this work also for integrative labels
     label: str,
     db_cs: str = DB_CS,
     data_path: str = BMRB_DATA,
 ) -> dict[tuple[int, str], float]:
-    """Use info from TRIZOD (or BMRB entry as fallback) to compute random coil chemical shifts with POTENCI."""
+    """Use info from TriZOD (or BMRB entry as fallback) to compute random coil chemical shifts with POTENCI."""
     conditions = {}
     if os.path.exists(db_cs):
         df = pd.read_csv(db_cs, index_col="label")
