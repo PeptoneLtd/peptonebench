@@ -4,14 +4,13 @@ import traceback
 from collections.abc import Callable
 from functools import lru_cache
 
-import matplotlib.pyplot as plt
 import mdtraj as md
 import numpy as np
-from scipy.interpolate import PchipInterpolator
 from scipy.optimize import minimize, root_scalar
 from scipy.special import logsumexp, softmax
 
 from .filter_unphysical_samples import _get_physical_traj_indices
+from .plotting import plot_reweighting_results
 
 logger = logging.getLogger(__name__)
 
@@ -206,56 +205,6 @@ def reweight_to_ess(
     return results
 
 
-def plot_reweighting_results(results: dict, title: str = "", ess_target: float = 10.0, filename: str = None) -> None:
-    """Plot the results of the reweighting, RMSE and ESS as a function of theta."""
-
-    log10_theta_range = np.linspace(min(results["log10_theta"]), max(results["log10_theta"]), 100)
-    sorting_order = np.argsort(results["log10_theta"])
-    sorting_order = sorting_order[np.isfinite(np.array(results["ess"])[sorting_order])]
-    log10_theta = np.array(results["log10_theta"])[sorting_order]
-    ess = np.array(results["ess"])[sorting_order]
-    rmse = np.array(results["rmse"])[sorting_order]
-
-    plt.figure(figsize=(5, 3))
-    plt.title(title)
-    plt.plot(
-        10**log10_theta_range,
-        PchipInterpolator(log10_theta, rmse, extrapolate=False)(log10_theta_range),
-        "-",
-        color="C0",
-    )
-    plt.plot(10**log10_theta, rmse, "+", color="C0")
-    plt.xscale("log")
-    plt.xlim(10 ** (log10_theta_range[0] - 0.5), 10 ** (log10_theta_range[-1] + 0.5))
-    plt.xlabel("theta")
-    plt.ylabel("RMSE [-]")
-    plt.twinx()
-    plt.plot([np.nan], "-", label=f"min RMSE = {min(rmse):.2f}")
-    plt.plot(
-        10**log10_theta_range,
-        PchipInterpolator(log10_theta, ess, extrapolate=False)(log10_theta_range),
-        "--",
-        color="C1",
-        label=f"min ESS = {min(ess):.2f}",
-    )
-    plt.plot(10**log10_theta, ess, "x", color="C1")
-    plt.axvline(
-        10 ** results["log10_theta"][-1],
-        color="k",
-        ls=":",
-        label=f"RMSE={results['rmse'][-1]:.2f}\nESS={results['ess'][-1]:.2f}",
-    )
-    if ess_target is not None:
-        plt.axhspan(0, ess_target, color="k", alpha=0.1)
-    plt.legend()
-    plt.ylabel("ESS [--]")
-    if filename is not None:
-        plt.savefig(filename, bbox_inches="tight")
-        plt.close()
-    else:
-        plt.show()
-
-
 def get_ens_top_filenames(ens_filename: str) -> tuple[str, str]:
     """Assuming ensembles in xtc+pdb, pdb, or h5 format.
     ens_filename can be given without extension."""
@@ -348,8 +297,8 @@ def benchmark_reweighting(
     except Exception:
         logger.error(f"{label:>7} - reweighting failed, {traceback.format_exc()}")
         return results
-    if plots_dir:
-        kind = "CS" if expt_shift is None else "SAXS"  # currently only two supported
+    if plots_dir:  # plotting is here so it can also be done in parallel
+        kind = "CS" if expt_shift is None else "SAXS"  # currently the only two supported
         generator = f"{os.path.basename(generator_dir)}, " if generator_dir != "." else ""
         plot_reweighting_results(
             res,

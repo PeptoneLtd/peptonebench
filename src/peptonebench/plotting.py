@@ -4,8 +4,58 @@ import mdtraj as md
 import nglview as nv
 import numpy as np
 from matplotlib.colors import rgb2hex
+from scipy.interpolate import PchipInterpolator
 from statsmodels.nonparametric.smoothers_lowess import lowess
 
+
+def plot_reweighting_results(results: dict, title: str = "", ess_target: float = 10.0, filename: str = None) -> None:
+    """Plot the results of the reweighting.reweight_to_ess function, i.e. RMSE and ESS as a function of theta."""
+
+    log10_theta_range = np.linspace(min(results["log10_theta"]), max(results["log10_theta"]), 100)
+    sorting_order = np.argsort(results["log10_theta"])
+    sorting_order = sorting_order[np.isfinite(np.array(results["ess"])[sorting_order])]
+    log10_theta = np.array(results["log10_theta"])[sorting_order]
+    ess = np.array(results["ess"])[sorting_order]
+    rmse = np.array(results["rmse"])[sorting_order]
+
+    plt.figure(figsize=(5, 3))
+    plt.title(title)
+    plt.plot(
+        10**log10_theta_range,
+        PchipInterpolator(log10_theta, rmse, extrapolate=False)(log10_theta_range),
+        "-",
+        color="C0",
+    )
+    plt.plot(10**log10_theta, rmse, "+", color="C0")
+    plt.xscale("log")
+    plt.xlim(10 ** (log10_theta_range[0] - 0.5), 10 ** (log10_theta_range[-1] + 0.5))
+    plt.xlabel("theta")
+    plt.ylabel("RMSE [-]")
+    plt.twinx()
+    plt.plot([np.nan], "-", label=f"min RMSE = {min(rmse):.2f}")
+    plt.plot(
+        10**log10_theta_range,
+        PchipInterpolator(log10_theta, ess, extrapolate=False)(log10_theta_range),
+        "--",
+        color="C1",
+        label=f"min ESS = {min(ess):.2f}",
+    )
+    plt.plot(10**log10_theta, ess, "x", color="C1")
+    plt.axvline(
+        10 ** results["log10_theta"][-1],
+        color="k",
+        ls=":",
+        label=f"RMSE={results['rmse'][-1]:.2f}\nESS={results['ess'][-1]:.2f}",
+    )
+    if ess_target is not None:
+        plt.axhspan(0, ess_target, color="k", alpha=0.1)
+    plt.legend()
+    plt.ylabel("ESS [--]")
+    if filename is not None:
+        plt.savefig(filename, bbox_inches="tight")
+        plt.close()
+    else:
+        plt.show()
 
 def get_lowess_fit(
     x: np.ndarray,

@@ -155,8 +155,8 @@ def reweight_dir(
     sel_atom_types_tag = ("-" + "_".join(selected_cs_types)) if selected_cs_types is not None else ""
     filter_tag = "" if filter_unphysical_frames else "-unfiltered"
 
-    for kind, predictor in zip(["cs", "saxs"], [cs_predictor, saxs_predictor]):
-        tag = f"-{predictor}{sel_atom_types_tag}{filter_tag}" if kind == "cs" else f"-{predictor}{filter_tag}"
+    for kind, predictor in zip(["CS", "SAXS"], [cs_predictor, saxs_predictor]):
+        tag = f"-{predictor}{sel_atom_types_tag}{filter_tag}" if kind == "CS" else f"-{predictor}{filter_tag}"
         filenames = os.path.join(
             generator_dir,
             gen_filename.replace("PREDICTOR", predictor).replace("LABEL", "*"),
@@ -184,8 +184,8 @@ def reweight_dir(
             data_path = integrative_data
             db_csv = db_integrative
 
-        if consistency_check or kind == "cs":
-            pep_df = pd.read_csv(os.path.join(data_path, db_csv), index_col="label")
+        if consistency_check or kind == "CS":
+            pep_df = pd.read_csv(db_csv, index_col="label")
             if consistency_check:
                 logger.info(f"Performing consistency check between ensembles and '{db_csv}'")
                 for label in labels:
@@ -194,7 +194,7 @@ def reweight_dir(
                         == pep_df.loc[label, "sequence"]
                     ), f"Consistency check failed for label {label}"
                 logger.info("Consistency check passed successfully")
-            if kind == "cs":
+            if kind == "CS":
                 gscores_dct = {
                     label: np.asarray(json.loads(pep_df.loc[label, "gscores"]), dtype=float) for label in pep_df.index
                 }
@@ -206,7 +206,7 @@ def reweight_dir(
                         )
                         gscores_dct = dict.fromkeys(labels, value=None)
             del pep_df
-        if kind == "cs":
+        if kind == "CS":
             expt_shift = None
             std_delta = nmrcs.std_delta_cs_from_label(
                 label=label,
@@ -216,7 +216,7 @@ def reweight_dir(
                 selected_cs_types=selected_cs_types,
                 gscores=gscores_dct[label],
             )
-        elif kind == "saxs":
+        elif kind == "SAXS":
             std_delta, expt_shift = saxs.std_Igen_and_Iexp_from_label(
                 label=label,
                 generator_dir=generator_dir,
@@ -255,7 +255,7 @@ def reweight_dir(
             f.write(",".join(labels) + "\n")
             for i in range(n_samples):
                 f.write(",".join([str(results[j]["weights"][i]) for j in range(len(labels))]) + "\n")
-    # TODO: also save a scatter plot with LOWESS and final score
+    # TODO: also save a scatter plot with LOWESS and final score?
     logger.info("Done\n")
 
 
