@@ -1,5 +1,6 @@
 import logging
 import os.path
+import traceback
 from collections.abc import Callable
 from functools import lru_cache
 
@@ -126,7 +127,7 @@ def run_loss_minimization(
         "initial_tr_radius": 0.1,
     }
     res = minimize(fun=loss_and_jac, x0=x0, jac=True, method="trust-constr", options=trust_constr_options)
-    # TODO: try with pytorch? https://docs.pytorch.org/docs/stable/generated/torch.optim.LBFGS.html#torch.optim.LBFGS
+    ## try with pytorch? https://docs.pytorch.org/docs/stable/generated/torch.optim.LBFGS.html#torch.optim.LBFGS
     if not res.success:
         logger.warning(f"  theta={theta:e}, failed: {res.message}")
         return np.full(n_samples, np.nan), np.full_like(res.x, np.nan)
@@ -205,7 +206,7 @@ def reweight_to_ess(
     return results
 
 
-def plot_reweighting_results(results: dict, title: str = "", ess_threshold: float = 10.0, filename: str = None) -> None:
+def plot_reweighting_results(results: dict, title: str = "", ess_target: float = 10.0, filename: str = None) -> None:
     """Plot the results of the reweighting, RMSE and ESS as a function of theta."""
 
     log10_theta_range = np.linspace(min(results["log10_theta"]), max(results["log10_theta"]), 100)
@@ -244,8 +245,8 @@ def plot_reweighting_results(results: dict, title: str = "", ess_threshold: floa
         ls=":",
         label=f"RMSE={results['rmse'][-1]:.2f}\nESS={results['ess'][-1]:.2f}",
     )
-    if ess_threshold is not None:
-        plt.axhspan(0, ess_threshold, color="k", alpha=0.1)
+    if ess_target is not None:
+        plt.axhspan(0, ess_target, color="k", alpha=0.1)
     plt.legend()
     plt.ylabel("ESS [--]")
     if filename is not None:
@@ -270,7 +271,7 @@ def get_traj_top_filenames(traj_filename: str) -> tuple[str, str]:
 
 
 def get_physical_frames_mask(traj_filename: str) -> np.ndarray:
-    """Assuming trajectories in xtc+pdb, pdb, or h5 format.
+    """Assuming ensembles in xtc+pdb, pdb, or h5 format.
     traj_filename can be given without extension."""
     traj_filename, top_filename = get_traj_top_filenames(traj_filename)
     trj = md.load(traj_filename, top=top_filename)
@@ -281,10 +282,86 @@ def get_physical_frames_mask(traj_filename: str) -> np.ndarray:
 
 
 def get_sequence_from_traj(traj_filename: str) -> str:
-    """Assuming trajectories in xtc+pdb, pdb, or h5 format.
+    """Assuming ensembles in xtc+pdb, pdb, or h5 format.
     traj_filename can be given without extension."""
 
     traj_filename, top_filename = get_traj_top_filenames(traj_filename)
     trj = md.load_frame(traj_filename, top=top_filename, index=0)
 
     return trj.top.to_fasta()[0]
+
+
+def benchmark_reweighting(
+    label: str,
+    generator_dir: str,
+    std_delta: np.ndarray,  # shape (n_samples, n_obs)
+    expt_shift: np.ndarray = None,  # shape (n_obs,)
+    filter_unphysical_frames: bool = True,
+    ess_target: float = 10.0,
+    plots_dir: str = "",
+    minimization: Callable = None,
+    logger_config: dict = None,
+) -> dict:
+    """Reweight ensembles to generate PeptoneBench results"""
+    if logger_config:
+        logging.basicConfig(**logger_config)
+    n_samples, n_obs = std_delta.shape
+    results = {
+        "label": label,
+        "n_obs": n_obs,
+        "n_samples": n_samples,
+        "RMSE": np.nan,
+        "ESS": np.nan,
+        "rew_RMSE": np.nan,
+        "min_ESS": np.nan,
+        "min_RMSE": np.nan,
+        "weights": np.full(n_samples, np.nan),
+    }
+    if n_samples == 0:
+        logger.warning(f"{label:>7} - skipping, no samples")
+        return results
+    nan_mask = np.isfinite(std_delta).all(axis=1)
+    tot_invalid_samples = sum(~nan_mask)
+    if tot_invalid_samples > 0:
+        logger.info(f"{label:>7} - {tot_invalid_samples} samples were discarded due to NaN in forward model data")
+    if filter_unphysical_frames:
+        valid_frames = get_physical_frames_mask(os.path.join(generator_dir, label))
+        logger.info(f"{label:>7} - traj filtered from {n_samples} to {sum(valid_frames)} samples")
+        assert len(valid_frames) == n_samples, f"{label:>7} - Mismatch length between ensemble and forward model data"
+        nan_mask = nan_mask & valid_frames
+    results["n_samples"] = sum(nan_mask)
+    results["RMSE"] = get_RMSE(std_delta[nan_mask])
+    if sum(nan_mask) == 0:
+        logger.warning(f"{label:>7} - no valid samples after filtering")
+        return results
+    if minimization is None:
+        minimization = run_gamma_minimization if expt_shift is None else run_loss_minimization
+        logger.debug(f"{label:>7} - using {'gamma' if expt_shift is None else 'loss'} minimization")
+    try:
+        res = reweight_to_ess(
+            minimization,
+            std_delta=std_delta[nan_mask],
+            expt_shift=expt_shift,
+            ess_abs_threshold=ess_target,
+            label=label,
+        )
+    except Exception:
+        logger.error(f"{label:>7} - reweighting failed, {traceback.format_exc()}")
+        return results
+    if plots_dir:
+        kind = "CS" if expt_shift is None else "SAXS"  # currently only two supported
+        generator = f"{os.path.basename(generator_dir)}, " if generator_dir != "." else ""
+        plot_reweighting_results(
+            res,
+            title=f"{kind} - {generator}{label}\n"
+            f"n_obs={n_obs:_}, n_samples={n_samples:_}, valid_samples={sum(nan_mask):_}",
+            filename=os.path.join(generator_dir, plots_dir, f"{label}.png"),
+            ess_target=ess_target,
+        )
+    results["ESS"] = res["ess"][-1]
+    results["rew_RMSE"] = res["rmse"][-1]
+    results["min_ESS"] = np.nanmin(res["ess"])
+    results["min_RMSE"] = np.nanmin(res["rmse"])
+    results["weights"][nan_mask] = res["weights"]
+
+    return results

@@ -1,8 +1,6 @@
-import json
 import logging
 import os.path
 import subprocess
-import traceback
 
 import mdtraj as md
 import numpy as np
@@ -10,7 +8,6 @@ import pandas as pd
 import pynmrstar
 from trizod.potenci.potenci import getpredshifts
 
-from . import reweighting
 from .constants import (
     BMRB_DATA,
     BMRB_FILENAME,
@@ -241,112 +238,6 @@ def std_delta_cs_from_label(
         cs_uncertainties=CS_UNCERTAINTIES[predictor],
         gscores=gscores,
         return_keys=return_keys,
-    )
-
-
-def reweight_cs(
-    label: str,
-    generator_dir: str,
-    std_delta_cs: np.ndarray,  # shape (n_samples, n_obs)
-    filter_unphysical_frames: bool = False,
-    ess_abs_threshold: float = 10.0,
-    ess_rel_threshold: float = 0.0,
-    plots_dir: str = "",
-    logger_config: dict = None,
-) -> dict:
-    """Reweight ensemble for given chemical shifts"""
-    if logger_config:
-        logging.basicConfig(**logger_config)
-    n_samples, n_obs = std_delta_cs.shape
-    results = {
-        "label": label,
-        "n_obs": n_obs,
-        "n_samples": n_samples,
-        "RMSE": np.nan,
-        "ESS": np.nan,
-        "rew_RMSE": np.nan,
-        "min_ESS": np.nan,
-        "min_RMSE": np.nan,
-        "weights": np.full(n_samples, np.nan),
-    }
-    if len(std_delta_cs) == 0:
-        logger.warning(f"{label:>7} - skipping, no common chemical shifts")
-        return results
-    nan_mask = np.isfinite(std_delta_cs).all(axis=1)
-    tot_invalid_cs = sum(~nan_mask)
-    if tot_invalid_cs > 0:
-        logger.info(f"{label:>7} - {tot_invalid_cs} samples were discarded due to NaN chemical shifts")
-    if filter_unphysical_frames:
-        valid_frames = reweighting.get_physical_frames_mask(os.path.join(generator_dir, label))
-        logger.info(f"{label:>7} - traj filtered from {n_samples} to {sum(valid_frames)} samples")
-        assert len(valid_frames) == n_samples, f"{label:>7} - Mismatch length between trajectory and chemical shifts"
-        nan_mask = nan_mask & valid_frames
-    results["n_samples"] = sum(nan_mask)
-    results["RMSE"] = reweighting.get_RMSE(std_delta_cs[nan_mask])
-    if sum(nan_mask) == 0:
-        logger.warning(f"{label:>7} - no valid samples after filtering")
-        return results
-    target_ess = max(ess_rel_threshold * n_samples, ess_abs_threshold)  # rel threshold is w.r.t. original n_samples
-    try:
-        res = reweighting.reweight_to_ess(
-            reweighting.run_gamma_minimization,
-            # reweighting.run_loss_minimization, # faster but less reliable
-            std_delta=std_delta_cs[nan_mask],
-            ess_abs_threshold=target_ess,
-            label=label,
-        )
-    except Exception:
-        logger.error(f"{label:>7} - reweighting failed, {traceback.format_exc()}")
-        return results
-    if plots_dir:
-        reweighting.plot_reweighting_results(
-            res,
-            title=f"CS - {os.path.basename(generator_dir)}, {label}\n"
-            f"n_obs={n_obs:_}, n_samples={n_samples:_}, valid_samples={sum(nan_mask):_}",
-            filename=os.path.join(generator_dir, plots_dir, f"{label}.png"),
-            ess_threshold=ess_abs_threshold,
-        )
-    results["ESS"] = res["ess"][-1]
-    results["rew_RMSE"] = res["rmse"][-1]
-    results["min_ESS"] = np.nanmin(res["ess"])
-    results["min_RMSE"] = np.nanmin(res["rmse"])
-    results["weights"][nan_mask] = res["weights"]
-
-    return results
-
-
-def reweight_cs_from_label(
-    label: str,
-    generator_dir: str,
-    predictor: str = DEFAULT_CS_PREDICTOR,
-    data_path: str = None,
-    selected_cs_types: list[str] = None,
-    gscores: np.ndarray = None,
-    filter_unphysical_frames: bool = False,
-    ess_abs_threshold: float = 10.0,
-    ess_rel_threshold: float = 0.0,
-    plots_dir: str = "",
-    logger_config: dict = None,
-) -> dict:
-    """Reweight a single entry in the chemical shifts dataset."""
-    std_delta_cs = std_delta_cs_from_label(
-        label=label,
-        generator_dir=generator_dir,
-        predictor=predictor,
-        data_path=data_path,
-        selected_cs_types=selected_cs_types,
-        gscores=gscores,
-    )
-
-    return reweight_cs(
-        label=label,
-        generator_dir=generator_dir,
-        std_delta_cs=std_delta_cs,
-        filter_unphysical_frames=filter_unphysical_frames,
-        ess_abs_threshold=ess_abs_threshold,
-        ess_rel_threshold=ess_rel_threshold,
-        plots_dir=plots_dir,
-        logger_config=logger_config,
     )
 
 

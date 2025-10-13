@@ -1,11 +1,9 @@
 import logging
 import os.path
-import traceback
 
 import numpy as np
 import pandas as pd
 
-from . import reweighting
 from .constants import (
     DEFAULT_SAXS_PREDICTOR,
     GEN_FILENAME,
@@ -80,7 +78,7 @@ def parse_sasbdb_out(filename: str, rescale_to_dat: bool = True) -> pd.DataFrame
     expt_df.loc[expt_df["sigma"] == -1, "sigma"] = np.nan
     if expt_df.isnull().values.any():
         logger.info(
-            f"interpolating missing sigma values ({sum(expt_df.isnull().sum()) / len(expt_df):.2%}) in {filename}"
+            f"interpolating missing sigma values ({sum(expt_df.isnull().sum()) / len(expt_df):.2%}) in {filename}",
         )
         expt_df = expt_df.interpolate(method="linear", limit_direction="both")
     if rescale_to_dat:
@@ -132,106 +130,3 @@ def std_Igen_and_Iexp_from_label(
         f"Q values do not match: {generator_dir}, {label}"
     )
     return std_Igen_and_Iexp(gen_df.to_numpy(), exp_df["I(q)"].to_numpy(), exp_df["sigma"].to_numpy())
-
-
-def reweight_saxs(
-    label: str,
-    generator_dir: str,
-    std_Igen: np.ndarray,  # shape (n_samples, n_obs)
-    std_Iexp: np.ndarray,  # shape (n_obs,)
-    filter_unphysical_frames: bool = False,
-    ess_abs_threshold: float = 10.0,
-    ess_rel_threshold: float = 0.0,
-    plots_dir: str = "",
-    logger_config: dict = None,
-) -> dict:
-    """Reweight ensemble for given saxs data"""
-    if logger_config:
-        logging.basicConfig(**logger_config)
-    n_samples, n_obs = std_Igen.shape
-    results = {
-        "label": label,
-        "n_obs": n_obs,
-        "n_samples": n_samples,
-        "RMSE": np.nan,
-        "ESS": np.nan,
-        "rew_RMSE": np.nan,
-        "min_ESS": np.nan,
-        "min_RMSE": np.nan,
-        "weights": np.full(n_samples, np.nan),
-    }
-    if len(std_Igen) == 0:
-        logger.warning(f"{label:>7} - skipping, no samples")
-        return results
-    assert np.isfinite(std_Igen).all(), f"{label:>7} - unexpected NaN values in std_Igen"
-    assert np.isfinite(std_Iexp).all(), f"{label:>7} - unexpected NaN values in std_Iexp"
-    if filter_unphysical_frames:
-        nan_mask = reweighting.get_physical_frames_mask(os.path.join(generator_dir, label))
-        logger.info(f"{label:>7} - traj filtered from {n_samples} to {sum(nan_mask)} samples")
-        assert len(nan_mask) == n_samples, f"{label:>7} - Mismatch length between trajectory and chemical shifts"
-    else:
-        nan_mask = np.full(n_samples, True, dtype=bool)
-    results["n_samples"] = sum(nan_mask)
-    results["RMSE"] = reweighting.get_RMSE(std_Igen[nan_mask], std_Iexp)
-    if sum(nan_mask) == 0:
-        logger.warning(f"{label:>7} - no valid samples after filtering")
-        return results
-    target_ess = max(ess_rel_threshold * n_samples, ess_abs_threshold)  # rel threshold is w.r.t. original n_samples
-    try:
-        res = reweighting.reweight_to_ess(
-            # reweighting.run_gamma_minimization,
-            reweighting.run_loss_minimization,  # faster but less reliable
-            std_delta=std_Igen[nan_mask],
-            expt_shift=std_Iexp,
-            ess_abs_threshold=target_ess,
-            label=label,
-        )
-    except Exception:
-        logger.error(f"{label:>7} - reweighting failed, {traceback.format_exc()}")
-        return results
-    if plots_dir:
-        reweighting.plot_reweighting_results(
-            res,
-            title=f"SAXS - {os.path.basename(generator_dir)}, {label}\nn_obs={n_obs:_}, n_samples={n_samples:_}, valid_samples={sum(nan_mask):_}",
-            filename=os.path.join(generator_dir, plots_dir, f"{label}.png"),
-            ess_threshold=ess_abs_threshold,
-        )
-    results["ESS"] = res["ess"][-1]
-    results["rew_RMSE"] = res["rmse"][-1]
-    results["min_ESS"] = np.nanmin(res["ess"])
-    results["min_RMSE"] = np.nanmin(res["rmse"])
-    results["weights"][nan_mask] = res["weights"]
-
-    return results
-
-
-def reweight_saxs_from_label(
-    label: str,
-    generator_dir: str,
-    predictor: str = DEFAULT_SAXS_PREDICTOR,
-    data_path: str = None,
-    filter_unphysical_frames: bool = False,
-    ess_abs_threshold: float = 10.0,
-    ess_rel_threshold: float = 0.0,
-    plots_dir: str = "",
-    logger_config: dict = None,
-) -> dict:
-    """Reweight a single entry in the saxs dataset."""
-    std_Igen, std_Iexp = std_Igen_and_Iexp_from_label(
-        label=label,
-        generator_dir=generator_dir,
-        predictor=predictor,
-        data_path=data_path,
-    )
-
-    return reweight_saxs(
-        label=label,
-        generator_dir=generator_dir,
-        std_Igen=std_Igen,
-        std_Iexp=std_Iexp,
-        filter_unphysical_frames=filter_unphysical_frames,
-        ess_abs_threshold=ess_abs_threshold,
-        ess_rel_threshold=ess_rel_threshold,
-        plots_dir=plots_dir,
-        logger_config=logger_config,
-    )

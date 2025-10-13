@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import traceback
+from functools import partial
 from glob import glob
 
 import joblib
@@ -10,11 +11,6 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-logger_config = {"level": logging.INFO, "format": "%(asctime)s %(levelname)s: %(message)s"}
-logging.basicConfig(**logger_config)
-logger = logging.getLogger(__name__)
-
-from peptonebench import nmrcs, saxs
 from peptonebench.constants import (
     BMRB_DATA,
     DB_CS,
@@ -27,11 +23,16 @@ from peptonebench.constants import (
     INTEGRATIVE_DATA,
     SASBDB_DATA,
 )
-from peptonebench.reweighting import get_sequence_from_traj
+
+logger_config = {"level": logging.INFO, "format": "%(asctime)s %(levelname)s: %(message)s"}
+logging.basicConfig(**logger_config)
+logger = logging.getLogger(__name__)
+
+from peptonebench import nmrcs, reweighting, saxs
 
 N_JOBS = min(joblib.cpu_count(), int(os.getenv("N_JOBS", "64")))
 DEFAULTS = {
-    "ess_threshold": 10.0,
+    "ess_target": 10.0,
     "filter_unphysical_frames": True,
     "plots_dir": "rew_plots",
     "gen_filename": GEN_FILENAME,
@@ -57,25 +58,19 @@ def get_args() -> argparse.Namespace:
         "--generator-dir",
         type=str,
         nargs="+",
-        required=True,
+        default=["."],
         help="folder with generated ensembles to be reweighted",
     )
     parser.add_argument(
-        "--gen-filename",
-        type=str,
-        default=DEFAULTS["gen_filename"],
-        help="name pattern of generated ensemble forward models files",
-    )
-    parser.add_argument(
-        "--ess-threshold",
+        "--ess-target",
         type=float,
-        default=DEFAULTS["ess_threshold"],
-        help="ESS threshold. Typically 10% of the number of samples.",
+        default=DEFAULTS["ess_target"],
+        help="target effective sample size (ESS) for the reweighting. Typically 10%% of the number of samples.",
     )
     parser.add_argument(
         "--filter-unphysical-frames",
         action="store_true",
-        help="assign NaN weights to unphysical frames from the trajectory, bioemu style",
+        help="assign NaN weights to unphysical frames in the ensemble, using BioEmu criteria",
     )
     parser.add_argument("--no-filter-unphysical-frames", dest="filter_unphysical_frames", action="store_false")
     parser.set_defaults(filter_unphysical_frames=DEFAULTS["filter_unphysical_frames"])
@@ -89,6 +84,12 @@ def get_args() -> argparse.Namespace:
         "--consistency-check",
         action="store_true",
         help="perform sequence consistency check between generated ensembles and DB entries",
+    )
+    parser.add_argument(
+        "--gen-filename",
+        type=str,
+        default=DEFAULTS["gen_filename"],
+        help="name pattern of generated ensemble forward models files",
     )
     parser.add_argument(
         "--loglevel",
@@ -137,10 +138,10 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def cs_reweight_dir(
+def reweight_dir(
     generator_dir: str,
     gen_filename: str = DEFAULTS["gen_filename"],
-    ess_threshold: float = DEFAULTS["ess_threshold"],
+    ess_target: float = DEFAULTS["ess_target"],
     filter_unphysical_frames: bool = DEFAULTS["filter_unphysical_frames"],
     consistency_check: bool = False,
     plots_dir: str = DEFAULTS["plots_dir"],
@@ -178,7 +179,7 @@ def cs_reweight_dir(
             )
             continue
 
-        if len(labels[0].split("_")) == 4:  # TODO: check all labels not just the first one
+        if len(labels[0].split("_")) == 4:  # checking only the first one
             logger.info("Detected BMRB labels")
             labels = sorted(labels, key=lambda x: (len(x), x.split("_")[0]))
             data_path = bmrb_data
@@ -198,7 +199,8 @@ def cs_reweight_dir(
                 logger.info(f"Performing consistency check between ensembles and '{db_csv}'")
                 for label in labels:
                     assert (
-                        get_sequence_from_traj(os.path.join(generator_dir, label)) == pep_df.loc[label, "sequence"]
+                        reweighting.get_sequence_from_traj(os.path.join(generator_dir, label))
+                        == pep_df.loc[label, "sequence"]
                     ), f"Consistency check failed for label {label}"
                 logger.info("Consistency check passed successfully")
             if kind == "cs":
@@ -208,47 +210,46 @@ def cs_reweight_dir(
                 for label in labels:
                     if label not in gscores_dct:
                         logger.error(
-                            f"{label} not found in {db_csv}: not using gscores to balance the uncertainties, for all labels"
+                            f"{label} not found in {db_csv}: "
+                            f"NOT using G-scores to balance the uncertainties, for all labels",
                         )
                         gscores_dct = dict.fromkeys(labels, value=None)
             del pep_df
+        if kind == "cs":
+            expt_shift = None
+            std_delta = nmrcs.std_delta_cs_from_label(
+                label=label,
+                generator_dir=generator_dir,
+                predictor=predictor,
+                data_path=data_path,
+                selected_cs_types=selected_cs_types,
+                gscores=gscores_dct[label],
+            )
+        elif kind == "saxs":
+            std_delta, expt_shift = saxs.std_Igen_and_Iexp_from_label(
+                label=label,
+                generator_dir=generator_dir,
+                predictor=predictor,
+                data_path=data_path,
+            )
+        else:
+            raise ValueError(f"Unknown kind: {kind}")
 
         n_jobs = min(n_jobs, len(labels))
         logger.info(f"Processing {len(labels)} labels in parallel using {n_jobs} jobs...")
         if plots_dir:
             os.makedirs(os.path.join(generator_dir, plots_dir + tag), exist_ok=True)
 
-        if kind == "cs":  # FIXME this works but it's ugly
-
-            def reweight_entry(label: str) -> dict:
-                return nmrcs.reweight_cs_from_label(
-                    label=label,
-                    gscores=gscores_dct[label],
-                    generator_dir=generator_dir,
-                    predictor=cs_predictor,
-                    data_path=data_path,
-                    selected_cs_types=selected_cs_types,
-                    filter_unphysical_frames=filter_unphysical_frames,
-                    ess_abs_threshold=ess_threshold,
-                    plots_dir=plots_dir + tag,
-                    logger_config=logger_config,
-                )
-        elif kind == "saxs":
-
-            def reweight_entry(label: str) -> dict:
-                return saxs.reweight_saxs_from_label(
-                    label=label,
-                    generator_dir=generator_dir,
-                    predictor=saxs_predictor,
-                    data_path=data_path,
-                    filter_unphysical_frames=filter_unphysical_frames,
-                    ess_abs_threshold=ess_threshold,
-                    plots_dir=plots_dir + tag,
-                    logger_config=logger_config,
-                )
-        else:
-            raise ValueError(f"Unknown kind: {kind}")
-
+        reweight_entry = partial(
+            reweighting.benchmark_reweighting,
+            generator_dir=generator_dir,
+            std_delta=std_delta,
+            expt_shift=expt_shift,
+            filter_unphysical_frames=filter_unphysical_frames,
+            ess_target=ess_target,
+            plots_dir=plots_dir + tag if plots_dir else "",
+            logger_config=logger_config,
+        )
         results = joblib.Parallel(n_jobs=n_jobs)(joblib.delayed(reweight_entry)(label) for label in tqdm(labels))
 
         logger.info("Saving results")
@@ -267,7 +268,7 @@ def cs_reweight_dir(
     logger.info("Done\n")
 
 
-if __name__ == "__main__":
+def main() -> None:
     args = get_args()
     logger_config["level"] = getattr(logging, args.loglevel)
     logger.setLevel(logger_config["level"])
@@ -277,6 +278,10 @@ if __name__ == "__main__":
         logger.info(f"---------- Processing directory {generator_dir} ----------")
         args.generator_dir = generator_dir
         try:
-            cs_reweight_dir(**vars(args), logger_config=logger_config)
+            reweight_dir(**vars(args), logger_config=logger_config)
         except Exception:
             logger.error(f"Error processing directory {generator_dir}: {traceback.format_exc()}")
+
+
+if __name__ == "__main__":
+    main()

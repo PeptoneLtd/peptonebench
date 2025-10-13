@@ -11,6 +11,9 @@ license = { file = "LICENSE" }
 requires-python = ">=3.9"
 dependencies = []
 
+[project.scripts]
+PeptoneBench = "peptonebench.scripts.run_benchmark:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
