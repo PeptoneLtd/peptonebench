@@ -1,0 +1,22 @@
+import os
+
+DEFAULT_PEPTONEDB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../datasets"))
+PEPTONEDB_PATH = os.getenv("PEPTONEDB_PATH", DEFAULT_PEPTONEDB_PATH)
+
+DB_CS = os.path.join(PEPTONEDB_PATH, "PeptoneDB-CS/PeptoneDB-CS.csv")
+DB_SAXS = os.path.join(PEPTONEDB_PATH, "PeptoneDB-SAXS/PeptoneDB-SAXS.csv")
+DB_INTEGRATIVE = os.path.join(PEPTONEDB_PATH, "PeptoneDB-Integrative/PeptoneDB-Integrative.csv")
+
+BMRB_DATA = os.path.join(PEPTONEDB_PATH, "PeptoneDB-CS/bmrb-data")
+SASBDB_DATA = os.path.join(PEPTONEDB_PATH, "PeptoneDB-SAXS/sasbdb-clean_data")
+INTEGRATIVE_DATA = os.path.join(PEPTONEDB_PATH, "PeptoneDB-Integrative")
+
+BMRB_FILENAME = "bmrENTRYID_3.str"
+SASBDB_FILENAME = "LABEL-bift.dat"
+I_CS_FILENAME = "LABEL/CS.dat"
+I_SAXS_FILENAME = "LABEL/SAXS_bift.dat"
+GEN_FILENAME = "PREDICTOR-LABEL.csv"
+
+DEFAULT_SAXS_PREDICTOR = "Pepsi"
+DEFAULT_CS_PREDICTOR = "UCBshift"
+DEFAULT_SELECTED_CS_TYPES = None

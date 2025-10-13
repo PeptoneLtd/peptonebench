@@ -4,7 +4,7 @@ import os.path
 import numpy as np
 import pandas as pd
 
-from .constants import (
+from .config import (
     DEFAULT_SAXS_PREDICTOR,
     GEN_FILENAME,
     I_SAXS_FILENAME,

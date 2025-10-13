@@ -1,6 +1,4 @@
 import numpy as np
-
-### TODO: extract needed functions to remove trizod dependency ?
 from trizod.constants import AA1TO3, BBATNS
 from trizod.potenci.potenci import getpredshifts
 from trizod.scoring.scoring import compute_pscores, convert_to_triplet_data, get_offset_corrected_wSCS

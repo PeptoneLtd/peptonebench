@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from peptonebench.constants import (
+from peptonebench.config import (
     BMRB_DATA,
     DB_CS,
     DB_INTEGRATIVE,
@@ -32,19 +32,10 @@ from peptonebench import nmrcs, reweighting, saxs
 
 N_JOBS = min(joblib.cpu_count(), int(os.getenv("N_JOBS", "64")))
 DEFAULTS = {
+    "generator_dir": ["."],
     "ess_target": 10.0,
     "filter_unphysical_frames": True,
     "plots_dir": "rew_plots",
-    "gen_filename": GEN_FILENAME,
-    "selected_cs_types": DEFAULT_SELECTED_CS_TYPES,
-    "cs_predictor": DEFAULT_CS_PREDICTOR,
-    "saxs_predictor": DEFAULT_SAXS_PREDICTOR,
-    "bmrb_data": BMRB_DATA,
-    "sasbdb_data": SASBDB_DATA,
-    "integrative_data": INTEGRATIVE_DATA,
-    "db_cs": DB_CS,
-    "db_saxs": DB_SAXS,
-    "db_integrative": DB_INTEGRATIVE,
 }
 
 
@@ -58,7 +49,7 @@ def get_args() -> argparse.Namespace:
         "--generator-dir",
         type=str,
         nargs="+",
-        default=["."],
+        default=DEFAULTS["generator_dir"],
         help="folder with generated ensembles to be reweighted",
     )
     parser.add_argument(
@@ -86,52 +77,52 @@ def get_args() -> argparse.Namespace:
         help="perform sequence consistency check between generated ensembles and DB entries",
     )
     parser.add_argument(
-        "--gen-filename",
-        type=str,
-        default=DEFAULTS["gen_filename"],
-        help="name pattern of generated ensemble forward models files",
-    )
-    parser.add_argument(
         "--loglevel",
         type=str,
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set logging level. NB: it won't affect loops parallelized with joblib",
     )
+    parser.add_argument(
+        "--gen-filename",
+        type=str,
+        default=GEN_FILENAME,
+        help="name pattern of generated ensemble forward models files",
+    )
 
     ## CS specific arguments
-    parser.add_argument("--cs-predictor", type=str, default=DEFAULTS["cs_predictor"], help="chemical shift predictor")
+    parser.add_argument("--cs-predictor", type=str, default=DEFAULT_CS_PREDICTOR, help="chemical shift predictor")
     parser.add_argument(
         "--selected-cs-types",
         type=str,
         nargs="+",
-        default=DEFAULTS["selected_cs_types"],
+        default=DEFAULT_SELECTED_CS_TYPES,
         help="list of chemical shifts types to consider. Default is to use all available ('all').",
     )
-    parser.add_argument("--bmrb-data", type=str, default=DEFAULTS["bmrb_data"], help="folder with BMRB data")
+    parser.add_argument("--bmrb-data", type=str, default=BMRB_DATA, help="folder with BMRB data")
     parser.add_argument(
         "--db-cs",
         type=str,
-        default=DEFAULTS["db_cs"],
+        default=DB_CS,
         help="path to PeptoneDB-CS.csv file, used for gscores",
     )
 
     ## SAXS specific arguments
-    parser.add_argument("--saxs-predictor", type=str, default=DEFAULTS["saxs_predictor"], help="SAXS predictor")
-    parser.add_argument("--sasbdb-data", type=str, default=DEFAULTS["sasbdb_data"], help="path to SASBDB clean data")
-    parser.add_argument("--db-saxs", type=str, default=DEFAULTS["db_saxs"], help="path to PeptoneDB-SAXS.csv file")
+    parser.add_argument("--saxs-predictor", type=str, default=DEFAULT_SAXS_PREDICTOR, help="SAXS predictor")
+    parser.add_argument("--sasbdb-data", type=str, default=SASBDB_DATA, help="path to SASBDB clean data")
+    parser.add_argument("--db-saxs", type=str, default=DB_SAXS, help="path to PeptoneDB-SAXS.csv file")
 
     ## Integrative specific arguments
     parser.add_argument(
         "--integrative-data",
         type=str,
-        default=DEFAULTS["integrative_data"],
+        default=INTEGRATIVE_DATA,
         help="path to PeptoneDB-Integrative dataset",
     )
     parser.add_argument(
         "--db-integrative",
         type=str,
-        default=DEFAULTS["db_integrative"],
+        default=DB_INTEGRATIVE,
         help="path to PeptoneDB-Integrative.csv file, used for gscores",
     )
 
@@ -139,22 +130,22 @@ def get_args() -> argparse.Namespace:
 
 
 def reweight_dir(
-    generator_dir: str,
-    gen_filename: str = DEFAULTS["gen_filename"],
+    generator_dir: str = DEFAULTS["generator_dir"],
+    gen_filename: str = GEN_FILENAME,
     ess_target: float = DEFAULTS["ess_target"],
     filter_unphysical_frames: bool = DEFAULTS["filter_unphysical_frames"],
     consistency_check: bool = False,
     plots_dir: str = DEFAULTS["plots_dir"],
     logger_config: dict = None,
-    cs_predictor: str = DEFAULTS["cs_predictor"],
-    selected_cs_types: list = DEFAULTS["selected_cs_types"],
-    bmrb_data: str = DEFAULTS["bmrb_data"],
-    db_cs: str = DEFAULTS["db_cs"],
-    saxs_predictor: str = DEFAULTS["saxs_predictor"],
-    sasbdb_data: str = DEFAULTS["sasbdb_data"],
-    db_saxs: str = DEFAULTS["db_saxs"],
-    integrative_data: str = DEFAULTS["integrative_data"],
-    db_integrative: str = DEFAULTS["db_integrative"],
+    cs_predictor: str = DEFAULT_CS_PREDICTOR,
+    selected_cs_types: list = DEFAULT_SELECTED_CS_TYPES,
+    bmrb_data: str = BMRB_DATA,
+    db_cs: str = DB_CS,
+    saxs_predictor: str = DEFAULT_SAXS_PREDICTOR,
+    sasbdb_data: str = SASBDB_DATA,
+    db_saxs: str = DB_SAXS,
+    integrative_data: str = INTEGRATIVE_DATA,
+    db_integrative: str = DB_INTEGRATIVE,
     n_jobs: int = N_JOBS,
 ) -> None:
     if selected_cs_types is not None:

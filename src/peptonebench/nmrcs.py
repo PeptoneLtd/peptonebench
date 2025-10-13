@@ -8,19 +8,8 @@ import pandas as pd
 import pynmrstar
 from trizod.potenci.potenci import getpredshifts
 
-from .constants import (
-    BMRB_DATA,
-    BMRB_FILENAME,
-    CS_UNCERTAINTIES,
-    DB_CS,
-    DEFAULT_CS_PREDICTOR,
-    GEN_FILENAME,
-    I_CS_FILENAME,
-    INTEGRATIVE_DATA,
-    ONE_TO_THREE_AA,
-    OUTLIERS_FILTER,
-    POTENCI_UNCERTAINTIES,
-)
+from .config import BMRB_DATA, BMRB_FILENAME, DB_CS, DEFAULT_CS_PREDICTOR, GEN_FILENAME, I_CS_FILENAME, INTEGRATIVE_DATA
+from .constants import CS_UNCERTAINTIES, ONE_TO_THREE_AA, OUTLIERS_FILTER, POTENCI_UNCERTAINTIES
 
 logger = logging.getLogger(__name__)
 
