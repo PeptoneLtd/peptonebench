@@ -3,16 +3,16 @@ import functools
 import logging
 import os
 import re
+import traceback
 from multiprocessing import Pool
 from typing import Dict, Union
 
+import CSpred as UCBshift
 import mdtraj as md
 import pandas as pd
-import CSpred as UCBshift
 from openmm.app import PDBFile
 from pdbfixer import PDBFixer
-import traceback
-from utils import load_db, list_pdbs
+from .utils import list_pdbs, load_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

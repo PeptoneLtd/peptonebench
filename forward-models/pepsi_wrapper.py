@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import argparse
 import os
 import subprocess
@@ -20,7 +18,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         "--saxs",
         required=True,
-        help="Path to experimental SAXS file, a .csv with columns [q, I(q), sigma] or a .dat file ready for Pepsi-SAXS",
+        help="Path to experimental SAXS file, a .csv or .dat with columns [q, I(q), sigma]",
     )
     parser.add_argument("--output", type=str, default=".", help="Output directory for results")
     parser.add_argument(
@@ -33,6 +31,12 @@ def get_args() -> argparse.Namespace:
         type=float,
         default=None,
         help="use PDBFixer to add hydrogens at given pH (default: do not add H)",
+    )
+    parser.add_argument(
+        "--angular_units",
+        type=int,
+        default=None,
+        help="Pepsi --angular_units option (default: automatic)",
     )
     parser.add_argument("--sequence", default="", help="Provide the aminoacid sequence to check for consistency")
     parser.add_argument("--keep_tmp", action="store_true", help="Keep temporary files (default: remove them)")
@@ -47,6 +51,7 @@ def run_pepsi(
     output: str,
     pepsi: str = "Pepsi-SAXS",
     pH: float = None,
+    angular_units: int = None,
     sequence: str = "",
     keep_tmp: bool = False,
 ) -> None:
@@ -60,6 +65,8 @@ def run_pepsi(
         from pdbfixer import PDBFixer
 
         flags += " --hyd"
+    if angular_units is not None:
+        flags += f" --angular_units {angular_units}"  # 1 => 1/A, q = 4pi sin(theta)/lambda
 
     trj = md.load(trajectory, top=topology)
     if len(sequence) > 0:
@@ -67,10 +74,9 @@ def run_pepsi(
             f"Amino acid sequence does not match: trj = {trj.top.to_fasta()[0]}, seq = {sequence}"
         )
     if saxs.endswith(".csv"):
-        flags += " --angular_units 1"  # csv all have q in 1/A
         expt_df = pd.read_csv(saxs)
     elif saxs.endswith(".dat"):
-        expt_df = pd.read_csv(saxs, sep="\s+")
+        expt_df = pd.read_csv(saxs, sep="\s+", comment="#", names=["q", "I(q)", "sigma"])
     else:
         raise ValueError("SAXS file must be a .csv or .dat file.")
     os.makedirs(output, exist_ok=True)
@@ -157,10 +163,11 @@ def run_pepsi(
         log_df.append([d_rho, r0, chi2, displaced_volume, i0])
 
     # Save results to file
+    label = os.path.basename(trajectory).split(".")[0]
     dat_df = pd.DataFrame(dat_df, columns=expt_df["q"].to_numpy(), index=successful_frames)
-    dat_df.to_csv(os.path.join(output, "saxs_curves.csv"))
+    dat_df.to_csv(os.path.join(output, f"Pepsi-{label}.csv"))
     log_df = pd.DataFrame(log_df, columns=["d_rho", "r0", "Chi^2", "displaced volume", "I(0)"], index=successful_frames)
-    log_df.to_csv(os.path.join(output, "pepsi_log.csv"))
+    log_df.to_csv(os.path.join(output, f"Pepsi_log-{label}.csv"))
 
     # Clean up temporary files
     if not keep_tmp:

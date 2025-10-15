@@ -6,11 +6,12 @@ import re
 import shutil
 import traceback
 from multiprocessing import Pool
-from typing import Union, Dict
+from typing import Dict, Union
 
 import mdtraj as md
-from pepsi_wrapper import run_pepsi
-from utils import load_db, list_pdbs
+
+from .pepsi_wrapper import run_pepsi
+from .utils import list_pdbs, load_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -290,6 +291,7 @@ def process_alphafold_result(
         logger.error(f"{label} does not have valid esmfold predictions")
         return
     logger.info(path)
+
     pdb = os.path.join(output_dir, f"{label}.pdb")
     saxs_data = os.path.join(saxs_data_dir, f"{label}.csv")
     output_dir = os.path.join(output_dir, f"out-{label}")
