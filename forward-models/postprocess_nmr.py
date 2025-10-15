@@ -12,6 +12,7 @@ import mdtraj as md
 import pandas as pd
 from openmm.app import PDBFile
 from pdbfixer import PDBFixer
+
 from .utils import list_pdbs, load_db
 
 logging.basicConfig(level=logging.INFO)
@@ -55,7 +56,8 @@ def addh_chemshifts(
                 spartap_df = md.chemical_shifts_spartaplus(tmp_trj)
             else:
                 spartap_df = pd.concat(
-                    [spartap_df, md.chemical_shifts_spartaplus(tmp_trj).rename(columns={0: i})], axis=1
+                    [spartap_df, md.chemical_shifts_spartaplus(tmp_trj).rename(columns={0: i})],
+                    axis=1,
                 )
         if not os.path.isfile(UCBshift_csv):
             df = UCBshift.calc_sing_pdb(addh_filename_i, pH, TP=False, ML=True, test=False)

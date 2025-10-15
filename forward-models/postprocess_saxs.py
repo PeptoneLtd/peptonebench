@@ -429,7 +429,12 @@ def process(
     os.makedirs(output_dir, exist_ok=True)
 
     f = functools.partial(
-        f, generator_dir=generator_dir, output_dir=output_dir, saxs_data_dir=saxs_data_dir, pepsi_path=pepsi_path, db=db
+        f,
+        generator_dir=generator_dir,
+        output_dir=output_dir,
+        saxs_data_dir=saxs_data_dir,
+        pepsi_path=pepsi_path,
+        db=db,
     )
     pool = Pool(nproc)
     pool.map(f, os.listdir(generator_dir))
