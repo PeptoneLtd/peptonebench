@@ -1,7 +1,6 @@
 import joblib
 import matplotlib.pyplot as plt
 import mdtraj as md
-import nglview as nv
 import numpy as np
 from matplotlib.colors import rgb2hex
 from scipy.interpolate import PchipInterpolator
@@ -56,6 +55,7 @@ def plot_reweighting_results(results: dict, title: str = "", ess_target: float =
         plt.close()
     else:
         plt.show()
+
 
 def get_lowess_fit(
     x: np.ndarray,
@@ -120,6 +120,7 @@ def nv_custom_coloring(
         view.add_cartoon(color=nv_custom_coloring(gscores, trj.top))
         view.center()
     """
+    import nglview as nv
 
     mycmap = plt.get_cmap(cmap, n_colors) if isinstance(cmap, str) else cmap
     colors = [rgb2hex(mycmap(i)) for i in range(n_colors)]

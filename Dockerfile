@@ -8,12 +8,11 @@ RUN apt-get update && apt-get install -y \
 ENV PIP_NO_CACHE_DIR=false
 ENV PIP_ROOT_USER_ACTION=ignore
 RUN pip install --upgrade pip setuptools wheel
-
-WORKDIR /app
-
 RUN pip3 install --no-cache-dir jupyterlab git+https://github.com/invemichele-peptone/trizod.git@playground
+
+WORKDIR /app/peptonebench
 COPY . .
 RUN pip3 install --no-cache-dir .
 
-
+ENV PEPTONEDB_PATH=/app/peptonebench/datasets
 CMD ["PeptoneBench"]

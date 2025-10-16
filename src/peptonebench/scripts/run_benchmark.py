@@ -50,7 +50,7 @@ def get_args() -> argparse.Namespace:
         type=str,
         nargs="+",
         default=DEFAULTS["generator_dir"],
-        help="folder with generated ensembles to be reweighted",
+        help="folder(s) with generated protein ensembles to be analyzed and reweighted",
     )
     parser.add_argument(
         "--ess-target",
