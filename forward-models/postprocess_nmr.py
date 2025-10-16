@@ -50,25 +50,34 @@ def addh_chemshifts(
         fixer.addMissingHydrogens(pH)
         PDBFile.writeFile(fixer.topology, fixer.positions, open(addh_filename_i, "w"))
         tmp_trj = md.load(addh_filename_i)
+
         if not os.path.isfile(spartap_csv):
-            if spartap_df is None:
-                spartap_df = md.chemical_shifts_spartaplus(tmp_trj)
-            else:
-                spartap_df = pd.concat(
-                    [spartap_df, md.chemical_shifts_spartaplus(tmp_trj).rename(columns={0: i})], axis=1
-                )
+            try:
+                if spartap_df is None:
+                    spartap_df = md.chemical_shifts_spartaplus(tmp_trj)
+                else:
+                    spartap_df = pd.concat(
+                        [spartap_df, md.chemical_shifts_spartaplus(tmp_trj).rename(columns={0: i})], axis=1
+                    )
+            except Exception as e:
+                logger.error("Error running Sparta+: {e}")
+                logger.error(traceback.format_exc())
         if not os.path.isfile(UCBshift_csv):
-            df = UCBshift.calc_sing_pdb(addh_filename_i, pH, TP=False, ML=True, test=False)
-            df["frame"] = i
-            df = df.set_index(["RESNUM", "RESNAME", "frame"]).stack()
-            df.index.names = ["resSeq", None, "frame", "name"]
-            df = pd.pivot_table(df.to_frame(name="x"), values="x", index="frame", columns=["resSeq", "name"])
-            df.columns = pd.MultiIndex.from_tuples([(str(a[0]), a[1][:-2]) for a in df.columns], names=df.columns.names)
-            df = df.reset_index().drop(columns="frame").T
-            if UCBshift_df is None:
-                UCBshift_df = df
-            else:
-                UCBshift_df = pd.concat([UCBshift_df, df.rename(columns={0: i})], axis=1)
+            try:
+                df = UCBshift.calc_sing_pdb(addh_filename_i, pH, TP=False, ML=True, test=False)
+                df["frame"] = i
+                df = df.set_index(["RESNUM", "RESNAME", "frame"]).stack()
+                df.index.names = ["resSeq", None, "frame", "name"]
+                df = pd.pivot_table(df.to_frame(name="x"), values="x", index="frame", columns=["resSeq", "name"])
+                df.columns = pd.MultiIndex.from_tuples([(str(a[0]), a[1][:-2]) for a in df.columns], names=df.columns.names)
+                df = df.reset_index().drop(columns="frame").T
+                if UCBshift_df is None:
+                    UCBshift_df = df
+                else:
+                    UCBshift_df = pd.concat([UCBshift_df, df.rename(columns={0: i})], axis=1)
+            except Exception as e:
+                logger.error("Error running UCBshift: {e}")
+                logger.error(traceback.format_exc())
 
         os.remove(addh_filename_i)
         os.remove(filename_i)
@@ -272,6 +281,7 @@ def process_alphafold_result(
     :param db: dictionary containing sequences and pH levels for each label
     :param overwrite: overwrite existing output files
     """
+    logger.info(f"alphafold: {pdb_file}")
     m = re.match(r"(.*)_unrelaxed_rank_001_alphafold2_ptm_model_.*_seed_.*\.pdb", pdb_file)
     if not m:
         return
@@ -363,7 +373,7 @@ def process(
     :param db: dictionary containing sequences and pH levels for each label
     :param nproc: how many processes to use
     """
-    preds_dir = generator_name
+    logger.info(f"processing {generator_name}")
     f = process_pdb_result
     if generator_name == "bioemu":
         preds_dir = "bioemu/sidechains"
@@ -385,7 +395,7 @@ def process(
     elif generator_name == "idpsam":
         f = process_idpsam_result
 
-    generator_dir = os.path.join(generators_dir, preds_dir)
+    generator_dir = os.path.join(generators_dir, generator_name)
     os.makedirs(output_dir, exist_ok=True)
 
     f = functools.partial(f, generator_dir=generator_dir, output_dir=output_dir, db=db)
@@ -435,7 +445,8 @@ def main():
 
     for pred in args.generators.split(","):
         processed_dir = str(os.path.join(args.workdir, "processed", pred))
-        process(args.workdir, processed_dir, pred, db=db, nproc=args.nprocs)
+        os.makedirs(processed_dir, exist_ok=True)
+        process(generators_dir=args.workdir, output_dir=processed_dir, generator_name=pred, db=db, nproc=args.nprocs)
 
 
 if __name__ == "__main__":
