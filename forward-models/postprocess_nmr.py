@@ -14,18 +14,18 @@ import CSpred as UCBshift
 from openmm.app import PDBFile
 from pdbfixer import PDBFixer
 
-from .utils import load_db, list_pdbs
+from utils import load_db, list_pdbs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def addh_chemshifts(
-    trj: md.Trajectory,
-    label: str,
-    outpath: str,
-    pH: float = 7.0,
-    tmpdir: str = "/tmp",
+        trj: md.Trajectory,
+        label: str,
+        outpath: str,
+        pH: float = 7.0,
+        tmpdir: str = "/tmp",
 ) -> None:
     """
     Predict chemical shifts for traj using Sparta+ and UCBShift.
@@ -71,7 +71,8 @@ def addh_chemshifts(
                 df = df.set_index(["RESNUM", "RESNAME", "frame"]).stack()
                 df.index.names = ["resSeq", None, "frame", "name"]
                 df = pd.pivot_table(df.to_frame(name="x"), values="x", index="frame", columns=["resSeq", "name"])
-                df.columns = pd.MultiIndex.from_tuples([(str(a[0]), a[1][:-2]) for a in df.columns], names=df.columns.names)
+                df.columns = pd.MultiIndex.from_tuples([(str(a[0]), a[1][:-2]) for a in df.columns],
+                                                       names=df.columns.names)
                 df = df.reset_index().drop(columns="frame").T
                 if UCBshift_df is None:
                     UCBshift_df = df
@@ -90,11 +91,11 @@ def addh_chemshifts(
 
 
 def process_boltz_result(
-    label: str,
-    generator_dir: str,
-    output_dir: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        label: str,
+        generator_dir: str,
+        output_dir: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
         Run CS forward models for boltz1 or boltz2 predictions. This code assumes boltz was run as follows:
@@ -121,7 +122,7 @@ def process_boltz_result(
     spartap = os.path.join(output_dir, f"Sparta+-{label}.csv")
     UCBshift = os.path.join(output_dir, f"UCBshift-{label}.csv")
     if overwrite or not (
-        os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isfile(spartap) and os.path.isfile(UCBshift)
+            os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isfile(spartap) and os.path.isfile(UCBshift)
     ):
         try:
             combined_traj = md.load(list_pdbs(path))
@@ -135,11 +136,11 @@ def process_boltz_result(
 
 
 def process_pdb_result(
-    input_pdb: str,
-    generator_dir: str,
-    output_dir: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        input_pdb: str,
+        generator_dir: str,
+        output_dir: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
     Runs CS forward models on a generic pdb file which contains multiple frames
@@ -158,7 +159,7 @@ def process_pdb_result(
     spartap = os.path.join(output_dir, f"Sparta+-{label}.csv")
     UCBshift = os.path.join(output_dir, f"UCBshift-{label}.csv")
     if overwrite or not (
-        os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isfile(spartap) and os.path.isfile(UCBshift)
+            os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isfile(spartap) and os.path.isfile(UCBshift)
     ):
         try:
             combined_traj = md.load(path)
@@ -172,11 +173,11 @@ def process_pdb_result(
 
 
 def process_esmfold_result(
-    pdb_dir: str,
-    generator_dir: str,
-    output_dir: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        pdb_dir: str,
+        generator_dir: str,
+        output_dir: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
     Runs CS forward models on esmfold predictions. This code assumes esmfold was run as follows:
@@ -214,11 +215,11 @@ def process_esmfold_result(
 
 
 def process_bioemu_result(
-    label: str,
-    generator_dir: str,
-    output_dir: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        label: str,
+        generator_dir: str,
+        output_dir: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
     Runs CS forward models on a pdb+xtc pair generated using bioemu sidechain reconstruction.
@@ -251,7 +252,7 @@ def process_bioemu_result(
     spartap = os.path.join(output_dir, f"Sparta+-{label}.csv")
     UCBshift = os.path.join(output_dir, f"UCBshift-{label}.csv")
     if overwrite or not (
-        os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isfile(spartap) and os.path.isfile(UCBshift)
+            os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isfile(spartap) and os.path.isfile(UCBshift)
     ):
         try:
             combined_traj = md.load(xtc_path, top=path)
@@ -265,11 +266,11 @@ def process_bioemu_result(
 
 
 def process_alphafold_result(
-    pdb_file: str,
-    generator_dir: str,
-    output_dir: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        pdb_file: str,
+        generator_dir: str,
+        output_dir: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
     Runs CS forward models on alphafold2 prediction. We only evaluate the 1st ranked aplhafold prediction.
@@ -308,11 +309,11 @@ def process_alphafold_result(
 
 
 def process_idpsam_result(
-    label: str,
-    results_dir: str,
-    output_dir: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        label: str,
+        results_dir: str,
+        output_dir: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
     Runs CS forward models on idpsam prediction. This code assumes idpsam was run as follows:
@@ -344,7 +345,7 @@ def process_idpsam_result(
         return
 
     if overwrite or not (
-        os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isfile(spartap) and os.path.isfile(UCBshift)
+            os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isfile(spartap) and os.path.isfile(UCBshift)
     ):
         try:
             traj = md.load(traj_path, top=top_path)
@@ -358,11 +359,11 @@ def process_idpsam_result(
 
 
 def process(
-    generators_dir: str,
-    generator_name: str,
-    output_dir: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    nproc: int = 8,
+        generators_dir: str,
+        generator_name: str,
+        output_dir: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        nproc: int = 8,
 ) -> None:
     """
     Parallely (nproc processes) runs the Sparta+ and UCBShift forward models on predictions from a single
@@ -407,18 +408,25 @@ def process(
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--workdir",
+        "--generators-dir",
         action="store",
-        dest="workdir",
-        help="local work directory",
-        default="/workdir",
+        dest="generators_dir",
+        help="directory containing one folder for each generator",
+        default="./generators",
     )
     parser.add_argument(
         "--generators",
         action="store",
         dest="generators",
-        help="generators to post-process",
-        default="bioemu,boltz1x,esmflow,esmfold,idpgan,idp-o",
+        help="generators to post-process. If not set, processes all generators in generators_dir",
+        default="",
+    )
+    parser.add_argument(
+        "--output-dir",
+        action="store",
+        dest="output_dir",
+        help="directory where to store results",
+        default="./processed",
     )
     parser.add_argument(
         "--nprocs",
@@ -439,15 +447,20 @@ def main():
     except SystemExit:
         raise ValueError("could not parse command-line arguments")
 
-    os.makedirs(args.workdir, exist_ok=True)
-    os.chdir(args.workdir)
-
     db = load_db(args.dataset)
-
-    for pred in args.generators.split(","):
-        processed_dir = str(os.path.join(args.workdir, "processed", pred))
+    if len(args.generators) > 0:
+        generators = args.generators.split(",")
+    else:
+        generators = [d for d in os.listdir(args.generators_dir) if os.path.isdir(os.path.join(args.generators_dir, d))]
+    logger.info(f"found generators: {generators}")
+    for pred in generators:
+        processed_dir = str(os.path.join(args.output_dir, pred))
         os.makedirs(processed_dir, exist_ok=True)
-        process(generators_dir=args.workdir, output_dir=processed_dir, generator_name=pred, db=db, nproc=args.nprocs)
+        process(generators_dir=args.generators_dir,
+                generator_name=pred,
+                output_dir=processed_dir,
+                db=db,
+                nproc=args.nprocs)
 
 
 if __name__ == "__main__":

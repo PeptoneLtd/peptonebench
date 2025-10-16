@@ -10,21 +10,21 @@ from typing import Dict, Union
 
 import mdtraj as md
 
-from .pepsi_wrapper import run_pepsi
-from .utils import list_pdbs, load_db
+from pepsi_wrapper import run_pepsi
+from utils import list_pdbs, load_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def process_boltz_result(
-    label: str,
-    generator_dir: str,
-    output_dir: str,
-    saxs_data_dir: str,
-    pepsi_path: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        label: str,
+        generator_dir: str,
+        output_dir: str,
+        saxs_data_dir: str,
+        pepsi_path: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
     Runs Pepsi-SAXS forward model on boltz1 or boltz2 predictions. This code assumes boltz was run as follows:
@@ -54,7 +54,7 @@ def process_boltz_result(
     output_dir = os.path.join(output_dir, f"out-{label}")
     pepsi_csv = os.path.join(pepsi_path, f"Pepsi-{label}.csv")
     if overwrite or not (
-        os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isdir(output_dir) and os.path.isfile(pepsi_csv)
+            os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isdir(output_dir) and os.path.isfile(pepsi_csv)
     ):
         try:
             combined_traj = md.load(list_pdbs(path))
@@ -70,22 +70,21 @@ def process_boltz_result(
                 pepsi=pepsi_path,
                 pH=pH,
                 sequence=sequence,
+                angular_units=1,
             )
-            shutil.move(os.path.join(output_dir, "saxs_curves.csv"), pepsi_csv)
-            shutil.rmtree(output_dir)
         except Exception as e:
             logger.error(f"failed to process boltz {label}: {e}")
             logger.error(traceback.format_exc())
 
 
 def process_pdb_result(
-    input_pdb: str,
-    generator_dir: str,
-    output_dir: str,
-    saxs_data_dir: str,
-    pepsi_path: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        input_pdb: str,
+        generator_dir: str,
+        output_dir: str,
+        saxs_data_dir: str,
+        pepsi_path: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
     Runs Pepsi-SAXS forward model on a generic pdb file which contains multiple frames
@@ -108,7 +107,7 @@ def process_pdb_result(
     output_dir = os.path.join(output_dir, f"out-{label}")
     pepsi_csv = os.path.join(pepsi_path, f"Pepsi-{label}.csv")
     if overwrite or not (
-        os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isdir(output_dir) and os.path.isfile(pepsi_csv)
+            os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isdir(output_dir) and os.path.isfile(pepsi_csv)
     ):
         try:
             combined_traj = md.load(path)
@@ -124,22 +123,21 @@ def process_pdb_result(
                 pepsi=pepsi_path,
                 pH=pH,
                 sequence=sequence,
+                angular_units=1,
             )
-            shutil.move(os.path.join(output_dir, "saxs_curves.csv"), pepsi_csv)
-            shutil.rmtree(output_dir)
         except Exception as e:
             logger.error(f"failed to process pdb {label}: {e}")
             logger.error(traceback.format_exc())
 
 
 def process_esmfold_result(
-    label: str,
-    generator_dir: str,
-    output_dir: str,
-    saxs_data_dir: str,
-    pepsi_path: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        label: str,
+        generator_dir: str,
+        output_dir: str,
+        saxs_data_dir: str,
+        pepsi_path: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
     Runs Pepsi-SAXS forward model on esmfold predictions. This code assumes esmfold was run as follows:
@@ -182,22 +180,21 @@ def process_esmfold_result(
                 pepsi=pepsi_path,
                 pH=pH,
                 sequence=sequence,
+                angular_units=1,
             )
-            shutil.move(os.path.join(output_dir, "saxs_curves.csv"), pepsi_csv)
-            shutil.rmtree(output_dir)
         except Exception as e:
             logger.error(f"failed to process esmfold {label}: {e}")
             logger.error(traceback.format_exc())
 
 
 def process_bioemu_result(
-    label: str,
-    generator_dir: str,
-    output_dir: str,
-    saxs_data_dir: str,
-    pepsi_path: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        label: str,
+        generator_dir: str,
+        output_dir: str,
+        saxs_data_dir: str,
+        pepsi_path: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
     Runs Pepsi-SAXS forward model on a pdb+xtc pair generated using bioemu sidechain reconstruction.
@@ -233,7 +230,7 @@ def process_bioemu_result(
     output_dir = os.path.join(output_dir, f"out-{label}")
     pepsi_csv = os.path.join(pepsi_path, f"Pepsi-{label}.csv")
     if overwrite or not (
-        os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isdir(output_dir) and os.path.isfile(pepsi_csv)
+            os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isdir(output_dir) and os.path.isfile(pepsi_csv)
     ):
         try:
             combined_traj = md.load(xtc_path, top=path)
@@ -249,22 +246,21 @@ def process_bioemu_result(
                 pepsi=pepsi_path,
                 pH=pH,
                 sequence=sequence,
+                angular_units=1,
             )
-            shutil.move(os.path.join(output_dir, "saxs_curves.csv"), pepsi_csv)
-            shutil.rmtree(output_dir)
         except Exception as e:
             logger.error(f"failed to process bioemu {label}: {e}")
             logger.error(traceback.format_exc())
 
 
 def process_alphafold_result(
-    pdb_file: str,
-    generator_dir: str,
-    output_dir: str,
-    saxs_data_dir: str,
-    pepsi_path: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        pdb_file: str,
+        generator_dir: str,
+        output_dir: str,
+        saxs_data_dir: str,
+        pepsi_path: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
     Runs Pepsi-SAXS forward model on alphafold2 prediction. We only evaluate the 1st ranked aplhafold prediction.
@@ -310,22 +306,21 @@ def process_alphafold_result(
                 pepsi=pepsi_path,
                 pH=pH,
                 sequence=sequence,
+                angular_units=1,
             )
-            shutil.move(os.path.join(output_dir, "saxs_curves.csv"), pepsi_csv)
-            shutil.rmtree(output_dir)
         except Exception as e:
             logger.error(f"failed to process alphafold {label}: {e}")
             logger.error(traceback.format_exc())
 
 
 def process_idpsam_result(
-    label: str,
-    generator_dir: str,
-    output_dir: str,
-    saxs_data_dir: str,
-    pepsi_path: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    overwrite: bool = False,
+        label: str,
+        generator_dir: str,
+        output_dir: str,
+        saxs_data_dir: str,
+        pepsi_path: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        overwrite: bool = False,
 ) -> None:
     """
     Runs Pepsi-SAXS forward model on idpsam prediction. This code assumes idpsam was run as follows:
@@ -359,7 +354,7 @@ def process_idpsam_result(
     output_dir = os.path.join(output_dir, f"out-{label}")
     pepsi_csv = os.path.join(pepsi_path, f"Pepsi-{label}.csv")
     if overwrite or not (
-        os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isdir(output_dir) and os.path.isfile(pepsi_csv)
+            os.path.isfile(pdb) and os.path.isfile(xtc) and os.path.isdir(output_dir) and os.path.isfile(pepsi_csv)
     ):
         try:
             combined_traj = md.load(traj_path, top=top_path)
@@ -375,22 +370,21 @@ def process_idpsam_result(
                 pepsi=pepsi_path,
                 pH=pH,
                 sequence=sequence,
+                angular_units=1,
             )
-            shutil.move(os.path.join(output_dir, "saxs_curves.csv"), pepsi_csv)
-            shutil.rmtree(output_dir)
         except Exception as e:
             logger.error(f"failed to process idpsam {label}: {e}")
             logger.error(traceback.format_exc())
 
 
 def process(
-    generators_dir: str,
-    generator_name: str,
-    output_dir: str,
-    saxs_data_dir: str,
-    pepsi_path: str,
-    db: Dict[str, Dict[str, Union[str, float]]],
-    nproc: int = 8,
+        generators_dir: str,
+        generator_name: str,
+        output_dir: str,
+        saxs_data_dir: str,
+        pepsi_path: str,
+        db: Dict[str, Dict[str, Union[str, float]]],
+        nproc: int = 8,
 ) -> None:
     """
     Parallely (nproc processes) runs the Pepsi-SAXS forward model on predictions from a single ensmble generator
@@ -443,28 +437,26 @@ def process(
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--workdir",
+        "--generators-dir",
         action="store",
-        dest="workdir",
-        help="local work directory",
-        default="/workdir",
+        dest="generators_dir",
+        help="directory containing one folder for each generator",
+        default="./generators",
     )
     parser.add_argument(
         "--generators",
         action="store",
         dest="generators",
         help="generators to post-process",
-        default="bioemu,boltz1x,esmflow,esmfold,idpgan,idp-o",
+        default="",
     )
     parser.add_argument(
-        "--nprocs",
+        "--output-dir",
         action="store",
-        dest="nprocs",
-        help="number of processors to use",
-        type=int,
-        default=8,
+        dest="output_dir",
+        help="directory where to store results",
+        default="./processed",
     )
-
     parser.add_argument(
         "--saxs-data",
         action="store",
@@ -473,7 +465,14 @@ def get_args():
         type=str,
         default="/workdir/saxs_database",
     )
-
+    parser.add_argument(
+        "--dataset",
+        action="store",
+        dest="dataset",
+        help="path dataset csv file",
+        type=str,
+        default="PeptoneDB-SAXS-sequences.csv",
+    )
     parser.add_argument(
         "--pepsi",
         action="store",
@@ -482,14 +481,13 @@ def get_args():
         type=str,
         default="/home/mambauser/Pepsi-SAXS",
     )
-
     parser.add_argument(
-        "--dataset",
+        "--nprocs",
         action="store",
-        dest="dataset",
-        help="path dataset csv file",
-        type=str,
-        default="PeptoneDB-SAXS-sequences.csv",
+        dest="nprocs",
+        help="number of processors to use",
+        type=int,
+        default=8,
     )
 
     return parser.parse_args()
@@ -501,15 +499,17 @@ def main():
     except SystemExit:
         raise ValueError("could not parse command-line arguments")
 
-    os.makedirs(args.workdir, exist_ok=True)
-    os.chdir(args.workdir)
-
     db = load_db(args.dataset)
 
-    for generator in args.generators.split(","):
-        output_dir = str(os.path.join(args.workdir, "processed-saxs", generator))
+    if len(args.generators) > 0:
+        generators = args.generators.split(",")
+    else:
+        generators = [d for d in os.listdir(args.generators_dir) if os.path.isdir(os.path.join(args.generators_dir, d))]
+    logger.info(f"found generators: {generators}")
+    for generator in generators:
+        output_dir = str(os.path.join(args.output_dir, generator))
         process(
-            generators_dir=args.workdir,
+            generators_dir=args.generators_dir,
             generator_name=generator,
             output_dir=output_dir,
             saxs_data_dir=args.saxs_data,
