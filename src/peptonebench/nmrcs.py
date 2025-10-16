@@ -54,8 +54,11 @@ def experimental_cs_from_bmrb_label(
     label: str,
     data_path: str = BMRB_DATA,
     filter_outliers: bool = True,
+    selected_cs_types: list[str] = None,
 ) -> dict[tuple[int, str], float]:
     entry, entryID, stID, assemID, entityID = bmrb_entry_from_label(label, data_path)
+    if selected_cs_types is None:
+        selected_cs_types = list(POTENCI_UNCERTAINTIES.keys())
     cs = {}
     for chemical_shift_loop in entry.get_loops_by_category("Atom_chem_shift"):
         for line in chemical_shift_loop.get_tag(
@@ -63,7 +66,7 @@ def experimental_cs_from_bmrb_label(
         ):
             if line[0] == assemID and line[1] == entityID and line[2] == stID and float(line[6]) > 0:
                 if filter_outliers:
-                    if line[5] not in POTENCI_UNCERTAINTIES:  # keep only CS types we can handle
+                    if line[5] not in selected_cs_types:
                         continue
                     if (line[3], line[5]) in OUTLIERS_FILTER:
                         low, high = OUTLIERS_FILTER[(line[3], line[5])]
@@ -83,8 +86,11 @@ def experimental_cs_from_integrative_label(
     label: str,
     data_path: str = INTEGRATIVE_DATA,
     filter_outliers: bool = True,
+    selected_cs_types: list[str] = None,
 ) -> dict[tuple[int, str], float]:
     filename = os.path.join(data_path, I_CS_FILENAME.replace("LABEL", label))
+    if selected_cs_types is None:
+        selected_cs_types = list(POTENCI_UNCERTAINTIES.keys())
     cs_types = []
     cs = {}
     with open(filename) as f:
@@ -101,7 +107,7 @@ def experimental_cs_from_integrative_label(
                 for i, val in enumerate(line_split[2:]):
                     if val.lower() != "nan" and float(val) > 0:
                         if filter_outliers:
-                            if cs_types[i] not in POTENCI_UNCERTAINTIES:  # keep only CS types we can handle
+                            if cs_types[i] not in selected_cs_types:
                                 continue
                             if len(line_split[1]) == 1:
                                 line_split[1] = ONE_TO_THREE_AA.get(line_split[1], line_split[1])
