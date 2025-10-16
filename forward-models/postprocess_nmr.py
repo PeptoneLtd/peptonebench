@@ -3,16 +3,18 @@ import functools
 import logging
 import os
 import re
+import traceback
 from multiprocessing import Pool
 from typing import Dict, Union
 
+import CSpred as UCBshift
 import mdtraj as md
 import pandas as pd
 import CSpred as UCBshift
 from openmm.app import PDBFile
 from pdbfixer import PDBFixer
-import traceback
-from utils import load_db, list_pdbs
+
+from .utils import load_db, list_pdbs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -50,14 +52,14 @@ def addh_chemshifts(
         fixer.addMissingHydrogens(pH)
         PDBFile.writeFile(fixer.topology, fixer.positions, open(addh_filename_i, "w"))
         tmp_trj = md.load(addh_filename_i)
-
         if not os.path.isfile(spartap_csv):
             try:
                 if spartap_df is None:
                     spartap_df = md.chemical_shifts_spartaplus(tmp_trj)
                 else:
                     spartap_df = pd.concat(
-                        [spartap_df, md.chemical_shifts_spartaplus(tmp_trj).rename(columns={0: i})], axis=1
+                        [spartap_df, md.chemical_shifts_spartaplus(tmp_trj).rename(columns={0: i})],
+                        axis=1,
                     )
             except Exception as e:
                 logger.error("Error running Sparta+: {e}")
@@ -281,7 +283,6 @@ def process_alphafold_result(
     :param db: dictionary containing sequences and pH levels for each label
     :param overwrite: overwrite existing output files
     """
-    logger.info(f"alphafold: {pdb_file}")
     m = re.match(r"(.*)_unrelaxed_rank_001_alphafold2_ptm_model_.*_seed_.*\.pdb", pdb_file)
     if not m:
         return

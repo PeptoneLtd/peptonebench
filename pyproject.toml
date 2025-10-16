@@ -11,7 +11,17 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
 dependencies = [
-    "git+https://github.com/invemichele-peptone/trizod.git@playground"
+    "git+https://github.com/invemichele-peptone/trizod.git@playground",
+    "joblib~=1.5.1",
+    "matplotlib~=3.10.7",
+    "mdtraj~=1.10.3",
+    "nglview~=3.1.4",
+    "numpy~=2.3.3",
+    "pandas~=2.3.3",
+    "pynmrstar~=3.3.6",
+    "scipy~=1.16.2",
+    "statsmodels~=0.14.5",
+    "tqdm~=4.67.1"
     ]
 
 [project.scripts]
