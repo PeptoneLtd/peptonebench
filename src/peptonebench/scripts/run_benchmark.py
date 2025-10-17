@@ -41,7 +41,15 @@ DEFAULTS = {
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Reweighting protein ensemble according to experimental data",
+        description="""Reweight protein ensembles according to experimental data and generate benchmark results.
+        The script processes all generated ensembles found in the specified folder(s), expecting the following 
+        naming convention:
+        [1] LABEL.pdb, LABEL.xtc for the generated ensembles, using the entry label in the PeptoneDB datasets
+        [2] PREDICTOR-LABEL.csv for the forward model predictions of the ensembles.
+        The script automatically detects the type of entry (PeptoneDB-CS, PeptoneDB-SAXS, or PeptoneDB-Integrative) 
+        and reweighting required.
+        It is possible to specify the location of the PeptoneDB datasets using the PEPTONEDB_PATH environment variable.
+        """,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
@@ -97,7 +105,7 @@ def get_args() -> argparse.Namespace:
         type=str,
         nargs="+",
         default=DEFAULT_SELECTED_CS_TYPES,
-        help="list of chemical shifts types to consider. Default is to use all available ('all').",
+        help="list of chemical shifts types to consider, set to 'all' or leave None to use all available.",
     )
     parser.add_argument("--bmrb-data", type=str, default=BMRB_DATA, help="folder with BMRB data")
     parser.add_argument(
@@ -108,7 +116,7 @@ def get_args() -> argparse.Namespace:
     )
 
     ## SAXS specific arguments
-    parser.add_argument("--saxs-predictor", type=str, default=DEFAULT_SAXS_PREDICTOR, help="SAXS predictor")
+    parser.add_argument("--saxs-predictor", type=str, default=DEFAULT_SAXS_PREDICTOR, help="name of SAXS predictor")
     parser.add_argument("--sasbdb-data", type=str, default=SASBDB_DATA, help="path to SASBDB clean data")
     parser.add_argument("--db-saxs", type=str, default=DB_SAXS, help="path to PeptoneDB-SAXS.csv file")
 
@@ -125,7 +133,6 @@ def get_args() -> argparse.Namespace:
         default=DB_INTEGRATIVE,
         help="path to PeptoneDB-Integrative.csv file, used for gscores",
     )
-
     return parser.parse_args()
 
 
@@ -255,7 +262,6 @@ def reweight_dir(
             f.write(",".join(labels) + "\n")
             for i in range(n_samples):
                 f.write(",".join([str(results[j]["weights"][i]) for j in range(len(labels))]) + "\n")
-    # TODO: also save a scatter plot with LOWESS and final score?
     logger.info("Done\n")
 
 
