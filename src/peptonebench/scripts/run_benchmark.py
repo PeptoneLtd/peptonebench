@@ -177,13 +177,19 @@ def reweight_dir(
             )
             continue
 
-        if len(labels[0].split("_")) == 4:  # checking only the first one
+        if len(labels[0].split("_")) == 4:  # checking only the first one, this can be improved
             logger.info("Detected BMRB labels")
+            if kind == "SAXS":
+                logger.warning("no SAXS data in BMRB, skipping...")
+                continue
             labels = sorted(labels, key=lambda x: (len(x), x.split("_")[0]))
             data_path = bmrb_data
             db_csv = db_cs
         elif labels[0].startswith("SASD"):
             logger.info("Detected SASBDB labels")
+            if kind == "CS":
+                logger.warning("no CS data in SASBDB, skipping...")
+                continue
             data_path = sasbdb_data
             db_csv = db_saxs
         else:
@@ -191,6 +197,7 @@ def reweight_dir(
             data_path = integrative_data
             db_csv = db_integrative
 
+        gscores_dct = None
         if consistency_check or kind == "CS":
             pep_df = pd.read_csv(db_csv, index_col="label")
             if consistency_check:
@@ -213,41 +220,52 @@ def reweight_dir(
                         )
                         gscores_dct = dict.fromkeys(labels, value=None)
             del pep_df
-        if kind == "CS":
-            expt_shift = None
-            std_delta = nmrcs.std_delta_cs_from_label(
-                label=label,
-                generator_dir=generator_dir,
-                predictor=predictor,
-                data_path=data_path,
-                selected_cs_types=selected_cs_types,
-                gscores=gscores_dct[label],
-            )
-        elif kind == "SAXS":
-            std_delta, expt_shift = saxs.std_Igen_and_Iexp_from_label(
-                label=label,
-                generator_dir=generator_dir,
-                predictor=predictor,
-                data_path=data_path,
-            )
-        else:
-            raise ValueError(f"Unknown kind: {kind}")
 
         n_jobs = min(n_jobs, len(labels))
         logger.info(f"Processing {len(labels)} labels in parallel using {n_jobs} jobs...")
         if plots_dir:
             os.makedirs(os.path.join(generator_dir, plots_dir + tag), exist_ok=True)
 
-        reweight_entry = partial(
-            reweighting.benchmark_reweighting,
-            generator_dir=generator_dir,
-            std_delta=std_delta,
-            expt_shift=expt_shift,
-            filter_unphysical_frames=filter_unphysical_frames,
-            ess_target=ess_target,
-            plots_dir=plots_dir + tag if plots_dir else "",
-            logger_config=logger_config,
-        )
+        def reweight_entry(
+            label: str,
+            kind: str = kind,
+            predictor: str = predictor,
+            data_path: str = data_path,
+            tag: str = tag,
+            gscores_dct: dict = gscores_dct,
+        ) -> dict:
+            if kind == "CS":
+                expt_shift = None
+                std_delta = nmrcs.std_delta_cs_from_label(
+                    label=label,
+                    generator_dir=generator_dir,
+                    predictor=predictor,
+                    data_path=data_path,
+                    selected_cs_types=selected_cs_types,
+                    gscores=gscores_dct[label],
+                    gen_filename=gen_filename,
+                )
+            elif kind == "SAXS":
+                std_delta, expt_shift = saxs.std_Igen_and_Iexp_from_label(
+                    label=label,
+                    generator_dir=generator_dir,
+                    predictor=predictor,
+                    data_path=data_path,
+                    gen_filename=gen_filename,
+                )
+            else:
+                raise ValueError(f"Unknown kind: {kind}")
+            return reweighting.benchmark_reweighting(
+                label=label,
+                generator_dir=generator_dir,
+                std_delta=std_delta,
+                expt_shift=expt_shift,
+                filter_unphysical_frames=filter_unphysical_frames,
+                ess_target=ess_target,
+                plots_dir=plots_dir + tag if plots_dir else "",
+                logger_config=logger_config,
+            )
+
         results = joblib.Parallel(n_jobs=n_jobs)(joblib.delayed(reweight_entry)(label) for label in tqdm(labels))
 
         logger.info("Saving results")

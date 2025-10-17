@@ -121,9 +121,10 @@ def std_Igen_and_Iexp_from_label(
     generator_dir: str,
     predictor: str = DEFAULT_SAXS_PREDICTOR,
     data_path: str = None,
+    gen_filename: str = GEN_FILENAME,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     exp_df = get_exp_df_from_label(label, data_path)
-    filename = os.path.join(generator_dir, GEN_FILENAME.replace("LABEL", label).replace("PREDICTOR", predictor))
+    filename = os.path.join(generator_dir, gen_filename.replace("LABEL", label).replace("PREDICTOR", predictor))
     gen_df = pd.read_csv(filename, index_col=0)
     # pandas adds .N to duplicate column names, so astype(float) can fail
     assert np.allclose(exp_df["q"], [float(".".join(x.split(".")[:2])) for x in gen_df.columns]), (

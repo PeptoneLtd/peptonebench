@@ -165,9 +165,10 @@ def generated_cs_from_label(
     label: str,
     generator_dir: str,
     predictor: str = DEFAULT_CS_PREDICTOR,
+    gen_filename: str = GEN_FILENAME,
 ) -> pd.DataFrame:  # shape (n_samples, n_obs)
     """Get chemical shifts for a specific generator and label."""
-    filename = os.path.join(generator_dir, GEN_FILENAME.replace("LABEL", label).replace("PREDICTOR", predictor))
+    filename = os.path.join(generator_dir, gen_filename.replace("LABEL", label).replace("PREDICTOR", predictor))
     return read_generated_cs(filename)
 
 
@@ -206,10 +207,11 @@ def std_delta_cs_from_label(
     selected_cs_types: list[str] = None,
     gscores: np.ndarray = None,
     return_keys: bool = False,
+    gen_filename: str = GEN_FILENAME,
 ) -> np.ndarray | tuple[np.ndarray, list[tuple[int, str]]]:  # shape (n_samples, n_obs)
     """Return generated chemical shifts, standardized with corresponding experimental measurements."""
     return std_delta_cs(
-        gen_cs=generated_cs_from_label(label, generator_dir, predictor),
+        gen_cs=generated_cs_from_label(label, generator_dir, predictor, gen_filename),
         exp_cs=experimental_cs_from_label(label, data_path),
         selected_cs_types=selected_cs_types,
         cs_uncertainties=CS_UNCERTAINTIES[predictor],
