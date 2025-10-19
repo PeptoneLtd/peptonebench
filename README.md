@@ -1,7 +1,8 @@
 # PeptoneBench: evaluating protein ensembles across the order-disorder continuum
 
 This repository contains all the code needed to run the the PeptoneBench benchmark to evaluate protein ensemble predictions against experimental data which covers structured as well as disordered proteins.
-For details see the preprint [Advancing Protein Ensemble Predictions Across the Order-Disorder Continuum](?).
+For details see the preprint [Advancing Protein Ensemble Predictions Across the Order-Disorder Continuum](https://doi.org/10.1101/2025.10.18.680935).
+The code related to the PepTron model can be found at https://github.com/peptoneltd/peptron.
 
 The experimental data needed for the benchmark can be downloaded from Zenodo 
 ```
