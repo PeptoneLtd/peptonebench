@@ -25,7 +25,7 @@ def compute_gscores(
     pH: float = 7.0,
     ionic_strength: float = 0.1,
 ) -> np.ndarray:
-    """Compute g-scores from chemical shifts"""
+    """Compute G-scores from chemical shifts"""
     #### default parameters as 'unfiltered' ###
     offset_correction = True
     max_offset = np.inf

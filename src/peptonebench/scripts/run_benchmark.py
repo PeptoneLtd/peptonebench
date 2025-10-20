@@ -112,7 +112,12 @@ def get_args() -> argparse.Namespace:
     )
 
     ## CS specific arguments
-    parser.add_argument("--cs-predictor", type=str, default=DEFAULT_CS_PREDICTOR, help="chemical shift predictor")
+    parser.add_argument(
+        "--cs-predictor",
+        type=str,
+        default=DEFAULT_CS_PREDICTOR,
+        help="name of chemical shifts forward-model predictor",
+    )
     parser.add_argument(
         "--selected-cs-types",
         type=str,
@@ -129,7 +134,12 @@ def get_args() -> argparse.Namespace:
     )
 
     ## SAXS specific arguments
-    parser.add_argument("--saxs-predictor", type=str, default=DEFAULT_SAXS_PREDICTOR, help="name of SAXS predictor")
+    parser.add_argument(
+        "--saxs-predictor",
+        type=str,
+        default=DEFAULT_SAXS_PREDICTOR,
+        help="name of SAXS forward-model predictor",
+    )
     parser.add_argument("--sasbdb-data", type=str, default=SASBDB_DATA, help="path to SASBDB clean data")
     parser.add_argument("--db-saxs", type=str, default=DB_SAXS, help="path to PeptoneDB-SAXS.csv file")
 
