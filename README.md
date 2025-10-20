@@ -52,3 +52,10 @@ We provide code and notebooks in the `integrativeanalysis` direcory to analyse t
   url       = {https://www.biorxiv.org/content/early/2025/10/19/2025.10.18.680935}
 }
 ```
+
+## License
+
+Copyright 2025 Peptone Ltd
+
+Licensed under the Apache License, Version 2.0. You may obtain a copy of the License at:
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
