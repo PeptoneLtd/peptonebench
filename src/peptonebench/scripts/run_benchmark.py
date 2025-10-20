@@ -17,7 +17,6 @@ import json
 import logging
 import os
 import traceback
-from functools import partial
 from glob import glob
 
 import joblib

@@ -1,4 +1,6 @@
-## code taken from https://github.com/microsoft/bioemu/blob/ac7455db1e981eec8267a20479dc274b857ed1c7/src/bioemu/convert_chemgraph.py#L296-L395
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+## adapted from https://github.com/microsoft/bioemu/blob/ac7455db1e981eec8267a20479dc274b857ed1c7/src/bioemu/convert_chemgraph.py#L296-L395
 
 import mdtraj
 import numpy as np
