@@ -1,3 +1,17 @@
+# Copyright 2025 Peptone Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 ## from https://doi.org/10.1007/s10858-018-0166-5 (cross-validation RMSE)
 POTENCI_UNCERTAINTIES = {"C": 0.1861, "CA": 0.1862, "CB": 0.1677, "N": 0.5341, "H": 0.0735, "HA": 0.0319, "HB": 0.0187}
 ## max RMSE from https://doi.org/10.1039/C9SC06561J Table 2 or https://doi.org/10.1021/jacs.4c10474 Table 2
