@@ -23,22 +23,20 @@ workdir/
 
 then, for the SAXS forward model run
 ```aiignore
-docker run -v $(pwd):/workdir --entrypoint /opt/conda/bin/python peptonebench-fwd-models \
-    /home/mambauser/postprocess_saxs.py \
-    --generators-dir /workdir/generators \
-    --output-dir /workdir/processed_saxs  \
-    --saxs-data /workdir/sasbdb-clean_data \
-    --dataset /workdir/dataset.csv \
-    --nprocs 8
+docker run -v $(pwd):/workdir peptonebench-fwd-models \ 
+    -p Pepsi \
+    -f $(printf '/workdir/%s ' generators/*) \
+    --output-dir /workdir/processed-saxs \
+    --prepare-ensembles 
 ```
+(omit `--prepare-ensembles` if the generators directories contain trajectories in pdb+xtc format)
 
 or for the Chemical Shifts forward models run:
 ```aiignore
- docker run --platform=linux/amd64 -v $(pwd):/workdir --entrypoint /opt/conda/bin/python peptonebench-fwd-models \
-    /home/mambauser/postprocess_nmr.py \
-    --generators-dir /workdir/generators \
-    --output-dir /workdir/processed_nmr  \
-    --dataset /workdir/dataset.csv \
-    --nprocs 8
+docker run -v $(pwd):/workdir peptonebench-fwd-models \ 
+    -p UCBshift \
+    -f $(printf '/workdir/%s ' generators/*) \
+    --output-dir /workdir/processed-saxs \
+    --prepare-ensembles  
 ```
 **note**: UCBshift will fail if ran under rosetta on mac silicon
