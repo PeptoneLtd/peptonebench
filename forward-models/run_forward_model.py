@@ -108,6 +108,8 @@ def save_as_xtc_and_pdb(filename: str, generator_dir: str, output_dir: str, labe
     if label is None:
         label = os.path.basename(filename).split(".")[0]
     trj = md.load(os.path.join(generator_dir, filename))
+    if len(trj) == 1:
+        logger.warning(f"only one frame found in {filename}, sure you want to save as trajectory?")
     trj[0].save(os.path.join(output_dir, label + ".pdb"))
     trj.save(os.path.join(output_dir, label + ".xtc"))
 
@@ -190,8 +192,15 @@ def prepare_ensembles_custom(generator_dir: str, output_dir: str, generator_name
                 trj[0].save(os.path.join(output_dir, label + ".pdb"))
                 trj.save(os.path.join(output_dir, label + ".xtc"))
     else:  # esmflow, idp-o, peptron
-        for ext in ["pdb", "h5"]:
-            for file in sorted(glob(os.path.join(generator_dir, f"*.{ext}")), key=lambda x: (len(x), x)):
+        for file in sorted(glob(os.path.join(generator_dir, "*.h5")), key=lambda x: (len(x), x)):
+            save_as_xtc_and_pdb(file, os.path.dirname(file), output_dir)
+        for file in sorted(glob(os.path.join(generator_dir, "*.pdb")), key=lambda x: (len(x), x)):
+            xtc_file = file.replace(".pdb", ".xtc")
+            if os.path.exists(xtc_file):
+                logger.warning(f"found {xtc_file}, only copying files")
+                shutil.copy(file, os.path.join(output_dir, os.path.basename(file)))
+                shutil.copy(xtc_file, os.path.join(output_dir, os.path.basename(xtc_file)))
+            else:
                 save_as_xtc_and_pdb(file, os.path.dirname(file), output_dir)
 
 
