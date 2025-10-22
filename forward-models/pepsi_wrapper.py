@@ -59,6 +59,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--sequence", default="", help="Provide the aminoacid sequence to check for consistency")
     parser.add_argument("--tmpname", type=str, default="out-LABEL", help="Name of temporary directory for results")
     parser.add_argument("--keep_tmp", action="store_true", help="Keep temporary files (default: remove them)")
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite any existing files")
 
     return parser.parse_args()
 
@@ -74,12 +75,18 @@ def run_pepsi(
     sequence: str = "",
     keep_tmp: bool = False,
     tmpname: str = "out-LABEL",
+    overwrite: bool = False,
 ) -> None:
     """
     Run Pepsi-SAXS on the provided trajectory and topology files.
     """
 
     label = os.path.basename(trajectory).split(".")[0]
+    outfile = os.path.join(output, f"Pepsi-{label}.csv")
+    if not overwrite and os.path.exists(outfile):
+        logger.info(f"'{outfile}' already exists, skipping it. use --overwrite to instead recompute")
+        return
+
     flags = "--maximum_scattering_vector 10"
     if pH is not None:
         from openmm.app import PDBFile
@@ -188,7 +195,7 @@ def run_pepsi(
 
     # Save results to file
     dat_df = pd.DataFrame(dat_df, columns=expt_df["q"].to_numpy(), index=successful_frames)
-    dat_df.to_csv(os.path.join(output, f"Pepsi-{label}.csv"))
+    dat_df.to_csv(outfile)
     log_df = pd.DataFrame(log_df, columns=["d_rho", "r0", "Chi^2", "displaced volume", "I(0)"], index=successful_frames)
     log_df.to_csv(os.path.join(output, f"Pepsi_log-{label}.csv"))
 

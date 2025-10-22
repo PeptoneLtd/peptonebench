@@ -51,7 +51,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--output", type=str, default=".", help="Output directory for results")
     parser.add_argument("--sequence", default="", help="Provide the aminoacid sequence to check for consistency")
     parser.add_argument("--tmpdir", type=str, default="/tmp", help="Name of temporary directory for results")
-    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing files (default: False)")
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing files")
 
     return parser.parse_args()
 
@@ -78,8 +78,9 @@ def run_cspred(
         predictor = (predictor,)
     if not overwrite:
         for p in predictor:
-            if os.path.exists(os.path.join(output, f"{p}-{label}.csv")):
-                logger.info(f"Chemical shifts for {label} with {p} already exist. Skipping...")
+            outfile = os.path.join(output, f"{p}-{label}.csv")
+            if os.path.exists(outfile):
+                logger.info(f"'{outfile}' already exists, skipping it. use --overwrite to instead recompute")
                 predictor = tuple(x for x in predictor if x != p)
         if len(predictor) == 0:
             return
