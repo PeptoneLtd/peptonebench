@@ -96,7 +96,7 @@ def get_args() -> argparse.Namespace:
         "--pepsi-path",
         help="path to Pepsi-SAXS executable",
         type=str,
-        default="/home/mambauser/Pepsi-SAXS",
+        default="Pepsi-SAXS",
     )
     return parser.parse_args()
 
