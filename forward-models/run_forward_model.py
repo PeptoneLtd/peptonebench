@@ -159,7 +159,7 @@ def prepare_ensembles_custom(generator_dir: str, output_dir: str, generator_name
             label = os.path.basename(pdb_file).split("_unrelaxed_")[0]
             save_as_xtc_and_pdb(pdb_file, generator_dir, output_dir, label)
     elif generator_name == "bioemu":
-        for file in sorted(glob(f"{generator_dir}/*/samples_sidechain_rec.xtc"), key=lambda x: (len(x), x)):
+        for file in sorted(glob(f"{generator_dir}/sidechains/*/samples_sidechain_rec.xtc"), key=lambda x: (len(x), x)):
             if os.path.exists(file.replace(".xtc", ".pdb")):
                 label = os.path.basename(os.path.dirname(file))
                 shutil.copy(file, os.path.join(output_dir, label + ".xtc"))
