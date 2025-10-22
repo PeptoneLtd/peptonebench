@@ -44,7 +44,12 @@ RUN ln -s /home/mambauser/CSpred/bins/mTM-align/mTM-align /usr/local/bin/mTM-ali
     ln -s /home/mambauser/CSpred/bins/ncbi-blast-2.9.0+/bin/makeblastdb /usr/local/bin/makeblastdb && \
     chmod -R a+r /opt/SPARTA+
 USER $MAMBA_USER
- 
+
+WORKDIR /app/peptonebench/datasets
+RUN wget https://zenodo.org/record/17306061/files/PeptoneDBs.tar.gz && \
+    tar -xzvf PeptoneDBs.tar.gz ./PeptoneDB-CS/PeptoneDB-CS.csv ./PeptoneDB-Integrative/PeptoneDB-Integrative.csv ./PeptoneDB-SAXS && \
+    rm PeptoneDBs.tar.gz
+
+WORKDIR /home/mambauser
 ENV PYTHONPATH=/home/mambauser/CSpred
 COPY --chown=$MAMBA_USER:$MAMBA_USER *.py /home/mambauser/
-
