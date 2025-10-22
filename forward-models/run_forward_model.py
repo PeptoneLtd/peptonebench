@@ -229,6 +229,7 @@ def process_generator(
             f"prepare_ensembles=True: copying ensembles from '{generator_dir}' to '{output_dir}' in XTC+PDB format",
         )
         prepare_ensembles_custom(generator_dir, output_dir)
+        generator_dir = output_dir
     else:
         logger.info(f"prepare_ensembles=False: expecting XTC+PDB ensembles in '{generator_dir}'")
 
