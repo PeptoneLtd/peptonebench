@@ -116,7 +116,7 @@ def run_pepsi(
     saxs_tmp = os.path.join(tmpdir, os.path.basename(saxs)).replace(".csv", ".dat")
     expt_df.to_csv(saxs_tmp, sep="\t", index=False)
 
-    frame_file = os.path.join(tmpdir, "frame_%04d.pdb")
+    frame_file = os.path.join(tmpdir, "frame_%d.pdb")
     dat_file = frame_file.replace(".pdb", ".dat")
     log_file = dat_file.replace(".dat", ".log")
 
