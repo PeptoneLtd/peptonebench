@@ -19,10 +19,10 @@ RUN wget https://zenodo.org/record/17306061/files/PeptoneDBs.tar.gz && \
     rm PeptoneDBs.tar.gz
 
 WORKDIR /app/integrativeanalysis
-ENV PYTHONPATH=/app/CSpred \
-    SPARTAP_DIR=/app/SPARTA+ \
-    PATH=/app/pales/linux:$PATH
-
+ENV PATH=/app/pales/linux:$PATH
 
 COPY . /app/integrativeanalysis
 
+WORKDIR /app
+EXPOSE 8888
+ENTRYPOINT ["/usr/local/bin/_entrypoint.sh", "jupyter", "notebook", "--allow-root", "--ip", "0.0.0.0"]
