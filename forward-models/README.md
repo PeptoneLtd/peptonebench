@@ -1,44 +1,87 @@
-# Forward models automation for PeptoneBench
+# Forward Models Automation for PeptoneBench
 
-## Building the docker image
+## Building the Docker Image
+1. Download the UCBShift (CSPred) model weights from https://datadryad.org/stash/share/6vbrswTtNRcHk2vV3e6P1QGH1yYMhvdHDlauysTCObE
+2. Place the `models.tgz` file you downloaded in step 1 into the directory containing this README file.
+3. Build the Docker image by running:
+  `docker build --platform=linux/amd64 . -t peptonebench-fwd-models`
 
-1. download UCBShift / CSPred model weights from https://datadryad.org/stash/share/6vbrswTtNRcHk2vV3e6P1QGH1yYMhvdHDlauysTCObE
-2. place the models.tgz file you downloaded at step 1) in the directory containing this readme file
-3. run `docker build --platform=linux/amd64 . -t peptonebench-fwd-models`
+## Running Forward Model Predictions
+First, generate all-atom protein ensembles from the PeptoneDBs using your generative model, and save them in the following format:
 
-## Running the forward models
-First dowload all relevant ensembles and SAXS data to a directory structure like the following (SAXS data is not 
-necessary if you only want to run Chemical shifts post-processing):
-
-```aiignore
+```
 workdir/
- |- dataset.csv
- |- saxs_data/     # only needed for SAXS post-processing
- |- generators/
-     |- bioemu/
-     |- boltz1/
-     |- boltz2/
-  ...
+  ├─ mymodel-PeptoneDB-SAXS/
+  │    ├─ SASDA25.pdb
+  │    ├─ SASDA25.xtc
+  │    ├─ SASDA37.pdb
+  │    ├─ SASDA37.xtc
+  │    ...
+  ├─ mymodel-PeptoneDB-CS/
+  │    ├─ 10036_1_1_1.pdb
+  │    ├─ 10036_1_1_1.xtc
+  │    ├─ 10091_1_1_1.pdb
+  │    ├─ 10091_1_1_1.xtc
+  │    ...
 ```
 
-then, for the SAXS forward model run
-```aiignore
-docker run -v $(pwd):/workdir --entrypoint /opt/conda/bin/python peptonebench-fwd-models \
-    /home/mambauser/postprocess_saxs.py \
-    --generators-dir /workdir/generators \
-    --output-dir /workdir/processed_saxs  \
-    --saxs-data /workdir/sasbdb-clean_data \
-    --dataset /workdir/dataset.csv \
-    --nprocs 8
+Next, run the forward models (this will take some time!):
+```
+docker run -v $(pwd):/workdir peptonebench-fwd-models \
+    -p Pepsi -f /workdir/mymodel-PeptoneDB-SAXS
+docker run -v $(pwd):/workdir peptonebench-fwd-models \
+    -p UCBshift -f /workdir/mymodel-PeptoneDB-CS
 ```
 
-or for the Chemical Shifts forward models run:
-```aiignore
- docker run --platform=linux/amd64 -v $(pwd):/workdir --entrypoint /opt/conda/bin/python peptonebench-fwd-models \
-    /home/mambauser/postprocess_nmr.py \
-    --generators-dir /workdir/generators \
-    --output-dir /workdir/processed_nmr  \
-    --dataset /workdir/dataset.csv \
-    --nprocs 8
+Finally, run the benchmark script to reweight the ensembles and score them:
 ```
-**note**: UCBshift will fail if ran under rosetta on mac silicon
+PeptoneBench -f workdir/mymodel-PeptoneDB-SAXS workdir/mymodel-PeptoneDB-CS
+```
+
+
+
+## Reproducing the Paper Results
+All generated ensembles, along with corresponding forward model predictions, can be found at: https://zenodo.org/records/17306061/files/Predictions.tar.gz.
+
+To reproduce these results, first generate all protein ensembles by following the instructions presented in the [paper](https://doi.org/10.1101/2025.10.18.680935) for each generative model.
+Set up your directory structure as follows:
+
+```
+workdir/
+  ├─ PeptoneDB-SAXS/
+  │    └─ raw/
+  │        ├─ bioemu/
+  │        ├─ boltz1x/
+  │        ├─ boltz2/
+  │        ...
+  ├─ PeptoneDB-CS/
+  │    └─ raw/
+  │        ├─ bioemu/
+  │        ├─ boltz1x/
+  │        ├─ boltz2/
+  │        ...
+```
+
+Next, for the SAXS forward model, run:
+```
+docker run -v $(pwd):/workdir peptonebench-fwd-models \
+    -p Pepsi \
+    -f $(printf '/workdir/%s ' PeptoneDB-SAXS/raw/*) \
+    --output-dir /workdir/PeptoneDB-SAXS/processed \
+    --prepare-ensembles
+```
+
+For the CS forward models, run:
+```
+docker run -v $(pwd):/workdir peptonebench-fwd-models \
+    -p UCBshift_Sparta+ \
+    -f $(printf '/workdir/%s ' PeptoneDB-CS/raw/*) \
+    --output-dir /workdir/PeptoneDB-CS/processed \
+    --prepare-ensembles
+```
+**Note:** UCBshift will fail if run under Rosetta on Mac silicon.
+
+Finally, run the benchmark on all models:
+```
+PeptoneBench -f workdir/PeptoneDB-SAXS/processed/* workdir/PeptoneDB-CS/processed/*
+```

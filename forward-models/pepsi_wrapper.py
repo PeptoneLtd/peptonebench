@@ -13,13 +13,17 @@
 # limitations under the License.
 
 import argparse
+import logging
 import os
+import shutil
 import subprocess
 
 import mdtraj as md
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+
+logger = logging.getLogger(__name__)
 
 
 def get_args() -> argparse.Namespace:
@@ -34,7 +38,6 @@ def get_args() -> argparse.Namespace:
         required=True,
         help="Path to experimental SAXS file, a .csv or .dat with columns [q, I(q), sigma]",
     )
-    parser.add_argument("--output", type=str, default=".", help="Output directory for results")
     parser.add_argument(
         "--pepsi",
         default="Pepsi-SAXS",
@@ -52,8 +55,11 @@ def get_args() -> argparse.Namespace:
         default=None,
         help="Pepsi --angular_units option (default: automatic)",
     )
+    parser.add_argument("--output", type=str, default=".", help="Output directory for results")
     parser.add_argument("--sequence", default="", help="Provide the aminoacid sequence to check for consistency")
+    parser.add_argument("--tmpname", type=str, default="out-LABEL", help="Name of temporary directory for results")
     parser.add_argument("--keep_tmp", action="store_true", help="Keep temporary files (default: remove them)")
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite any existing files")
 
     return parser.parse_args()
 
@@ -68,10 +74,18 @@ def run_pepsi(
     angular_units: int = None,
     sequence: str = "",
     keep_tmp: bool = False,
+    tmpname: str = "out-LABEL",
+    overwrite: bool = False,
 ) -> None:
     """
     Run Pepsi-SAXS on the provided trajectory and topology files.
     """
+
+    label = os.path.basename(trajectory).split(".")[0]
+    outfile = os.path.join(output, f"Pepsi-{label}.csv")
+    if not overwrite and os.path.exists(outfile):
+        logger.info(f"'{outfile}' already exists, skipping it. use --overwrite to instead recompute")
+        return
 
     flags = "--maximum_scattering_vector 10"
     if pH is not None:
@@ -93,15 +107,16 @@ def run_pepsi(
         expt_df = pd.read_csv(saxs, sep="\s+", comment="#", names=["q", "I(q)", "sigma"])
     else:
         raise ValueError("SAXS file must be a .csv or .dat file.")
-    os.makedirs(output, exist_ok=True)
-    warning_log_file = os.path.join(output, "warning.log")
+    tmpdir = os.path.abspath(os.path.join(output, tmpname.replace("LABEL", label)))
+    os.makedirs(tmpdir, exist_ok=True)
+    warning_log_file = os.path.join(tmpdir, "warning.log")
     if os.path.exists(warning_log_file):
-        print(f"removing old warning log file, {warning_log_file}")
+        logger.info(f"removing old warning log file, {warning_log_file}")
         os.remove(warning_log_file)
-    saxs_tmp = os.path.join(output, os.path.basename(saxs)).replace(".csv", ".dat")
+    saxs_tmp = os.path.join(tmpdir, os.path.basename(saxs)).replace(".csv", ".dat")
     expt_df.to_csv(saxs_tmp, sep="\t", index=False)
 
-    frame_file = os.path.join(output, "frame_%04d.pdb")
+    frame_file = os.path.join(tmpdir, "frame_%d.pdb")
     dat_file = frame_file.replace(".pdb", ".dat")
     log_file = dat_file.replace(".dat", ".log")
 
@@ -130,23 +145,25 @@ def run_pepsi(
                     "+++ this could be due to a failure of the adaptive algorithm for selecting the expansion order,"
                     f" retrying with a fixed high number ({high_n}) of coefficients +++"
                 )
-                print(warning_str)
+                logger.warning(warning_str)
                 with open(warning_log_file, "a") as warning_log:
                     warning_log.write(warning_str + "\n")
                 with open(log_file_i, "w") as f:
                     subprocess.run(cmd + ["--nCoeff", str(high_n)], check=True, stdout=f, stderr=subprocess.STDOUT)
             except subprocess.CalledProcessError as e:
                 error_str = f"+++ ERROR processing {trajectory} at frame {i}: {e} +++"
-                print(error_str)
+                logger.error(error_str)
                 with open(warning_log_file, "a") as warning_log:
                     warning_log.write(error_str + "\n")
                 continue
 
         # Check and save results
         all_dat_df = pd.read_csv(dat_file_i, sep="\s+", header=None, names=["q", "I(q)", "sigma", "I_fit"], comment="#")
-        assert np.allclose(all_dat_df["q"], expt_df["q"], atol=1e-6), (
-            f"q values do not match for frame {i}, {np.abs(all_dat_df['q'] - expt_df['q']).max():.2e}"
-        )
+        if not np.allclose(all_dat_df["q"], expt_df["q"], atol=1e-6):
+            logger.warning(
+                f"q values do not match for frame {i}, {np.abs(all_dat_df['q'] - expt_df['q']).max():.2e}"
+                ", make sure units are fine",
+            )
         assert np.allclose(all_dat_df["I(q)"], expt_df["I(q)"], atol=1e-6), (
             f"I(q) values do not match for frame {i}, {np.abs(all_dat_df['I(q)'] - expt_df['I(q)']).max():.2e}"
         )
@@ -177,20 +194,19 @@ def run_pepsi(
         log_df.append([d_rho, r0, chi2, displaced_volume, i0])
 
     # Save results to file
-    label = os.path.basename(trajectory).split(".")[0]
     dat_df = pd.DataFrame(dat_df, columns=expt_df["q"].to_numpy(), index=successful_frames)
-    dat_df.to_csv(os.path.join(output, f"Pepsi-{label}.csv"))
+    dat_df.to_csv(outfile)
     log_df = pd.DataFrame(log_df, columns=["d_rho", "r0", "Chi^2", "displaced volume", "I(0)"], index=successful_frames)
     log_df.to_csv(os.path.join(output, f"Pepsi_log-{label}.csv"))
 
     # Clean up temporary files
     if not keep_tmp:
-        os.remove(saxs_tmp)
-        for i in successful_frames:
-            os.remove(frame_file % i)
-            os.remove(dat_file % i)
-            os.remove(log_file % i)
+        shutil.rmtree(tmpdir)
+
+
+def main() -> None:
+    run_pepsi(**vars(get_args()))
 
 
 if __name__ == "__main__":
-    run_pepsi(**vars(get_args()))
+    main()
