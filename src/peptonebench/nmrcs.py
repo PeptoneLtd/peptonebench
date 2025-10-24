@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import logging
 import os.path
 import subprocess
@@ -21,7 +22,16 @@ import pandas as pd
 import pynmrstar
 from trizod.potenci.potenci import getpredshifts
 
-from .config import BMRB_DATA, BMRB_FILENAME, DB_CS, DEFAULT_CS_PREDICTOR, GEN_FILENAME, I_CS_FILENAME, INTEGRATIVE_DATA
+from .config import (
+    BMRB_DATA,
+    BMRB_FILENAME,
+    DB_CS,
+    DB_INTEGRATIVE,
+    DEFAULT_CS_PREDICTOR,
+    GEN_FILENAME,
+    I_CS_FILENAME,
+    INTEGRATIVE_DATA,
+)
 from .constants import CS_UNCERTAINTIES, ONE_TO_THREE_AA, OUTLIERS_FILTER, POTENCI_UNCERTAINTIES
 
 logger = logging.getLogger(__name__)
@@ -239,56 +249,88 @@ def compute_random_coil_cs(
     temperature: float = 298.0,
     pH: float = 7.0,
     ionic_strength: float = 0.1,
+    cs_type: str = None,
 ) -> dict[tuple[int, str], float]:
-    """Compute random coil chemical shifts with POTENCI."""
+    """Compute random coil chemical shifts with POTENCI. Return only one cs_type if specified."""
     dct_cs = getpredshifts(sequence, temperature, pH, ionic_strength, pkacsvfile=False)
-    return {(k[0], kk): vv for k, v in dct_cs.items() for kk, vv in v.items()}
-
-
-def random_coil_cs_from_bmrb_label(  # TODO: make this work also for integrative labels
-    label: str,
-    db_cs: str = DB_CS,
-    data_path: str = BMRB_DATA,
-) -> dict[tuple[int, str], float]:
-    """Use info from TriZOD (or BMRB entry as fallback) to compute random coil chemical shifts with POTENCI."""
-    conditions = {}
-    if os.path.exists(db_cs):
-        df = pd.read_csv(db_cs, index_col="label")
-        sequence = df.loc[label, "sequence"]
-        conditions["temperature"] = df.loc[label, "temperature"]
-        conditions["pH"] = df.loc[label, "pH"]
-        conditions["ionic_strength"] = df.loc[label, "ionic_strength(M)"]
-    else:
-        logger.info(f"PeptoneDB-CS file not found '{db_cs}', using BMRB entry for conditions")
-        entry, entryID, stID, assemID, entityID = bmrb_entry_from_label(label, data_path)
-        sequence = sequence_from_bmrb_entry(entry, entityID)
-        ionic_conversion = {"M": 1, "mM": 1e-3}
-        Sample_condition_list_ID = "1"  # FIXME get the correct one!
-        for loop in entry.get_loops_by_category("Sample_condition_variable"):
-            for line in loop.get_tag(["Sample_condition_list_ID", "Type", "Val", "Val_units"]):
-                if line[0] != Sample_condition_list_ID:
-                    raise NotImplementedError("multiple Sample_condition_list_ID not supported")
-                    continue
-                if line[1] in ["temperature", "pH"]:
-                    conditions[line[1]] = float(line[2])
-                elif line[1] == "ionic strength":
-                    val = float(line[2]) * ionic_conversion.get(line[3], 1e-3)
-                    while val > 5:
-                        logger.warning(f"{label:>7} - suspiciously high ionic strength {val} M, assuming wrong units")
-                        val *= 1e-3
-                    conditions["ionic_strength"] = val
-    return compute_random_coil_cs(sequence, **conditions)
+    cs = {(k[0], kk): vv for k, v in dct_cs.items() for kk, vv in v.items()}
+    if cs_type is not None:
+        if cs_type not in POTENCI_UNCERTAINTIES:
+            logger.warning(f"cs_type='{cs_type}' not among supported: {list(POTENCI_UNCERTAINTIES.keys())}")
+        cs = {k: v for k, v in cs.items() if k[1] == cs_type}
+    return cs
 
 
 def secondary_cs(cs: dict, conditions: dict, cs_type: str = "CA") -> tuple[np.ndarray, np.ndarray]:
+    """Compute secondary chemical shifts given experimental CS and conditions from DB_CS."""
     rc_cs = compute_random_coil_cs(
         sequence=conditions["sequence"],
         temperature=conditions["temperature"],
         pH=conditions["pH"],
         ionic_strength=conditions["ionic_strength(M)"],
+        cs_type=cs_type,
     )
-    rc_cs = {k: v for k, v in rc_cs.items() if k[1] == cs_type}
     shared_keys = sorted(set(cs.keys()).intersection(set(rc_cs.keys())))
     return np.array([res for res, a in shared_keys]), np.array(
         [cs[(res, a)] - rc_cs[(res, a)] for res, a in shared_keys],
     )
+
+
+def get_all_about_secondary_cs_from_label(
+    label: str,
+    cs_type: str = "CA",
+    db_path: str = None,
+    data_path: str = None,
+    none_uncertainties: bool = False,
+    predictor: str = DEFAULT_CS_PREDICTOR,
+    generator_dir: str = None,
+    gen_filename: str = GEN_FILENAME,
+) -> tuple:
+    """Get all relevant data to plot secondary chemical shifts for a given label, both experimental and generated."""
+    if data_path is None or db_path is None:
+        if label.count("_") == 3:
+            logger.info("Assuming PeptoneDB-CS entry")
+            if db_path is None:
+                db_path = DB_CS
+            if data_path is None:
+                data_path = BMRB_DATA
+        else:
+            logger.info("Assuming PeptoneBench-Integrative entry")
+            if db_path is None:
+                db_path = DB_INTEGRATIVE
+            if data_path is None:
+                data_path = INTEGRATIVE_DATA
+    pep_cs_df = pd.read_csv(
+        db_path,
+        index_col="label",
+        converters={"gscores": lambda s: np.asarray(json.loads(s), dtype=float)},
+    )
+    rc_cs = compute_random_coil_cs(
+        sequence=pep_cs_df.loc[label, "sequence"],
+        temperature=pep_cs_df.loc[label, "temperature"],
+        pH=pep_cs_df.loc[label, "pH"],
+        ionic_strength=pep_cs_df.loc[label, "ionic_strength(M)"],
+        cs_type=cs_type,
+    )
+    if len(rc_cs) == 0:
+        logger.warning(f"No random coil CS found for cs_type='{cs_type}'")
+        return None
+
+    exp_cs = experimental_cs_from_label(label, data_path)
+    shared_keys = sorted(set(exp_cs.keys()).intersection(set(rc_cs.keys())))
+    exp_res = np.array([res for res, a in shared_keys])
+    exp_cs = np.array([exp_cs[(res, a)] - rc_cs[(res, a)] for res, a in shared_keys])
+    if none_uncertainties:
+        uncertainties = None
+    else:
+        uncertainties = extended_cs_uncertainties(
+            shared_keys,
+            pep_cs_df.loc[label, "gscores"],
+            ord_unc=CS_UNCERTAINTIES[predictor],
+        )
+    if generator_dir is None:
+        return exp_res, uncertainties, exp_cs
+
+    gen_cs = generated_cs_from_label(label, generator_dir, predictor, gen_filename)
+    gen_cs = np.array([gen_cs[(res, a)] - rc_cs[(res, a)] for res, a in shared_keys])
+    return exp_res, uncertainties, exp_cs, gen_cs

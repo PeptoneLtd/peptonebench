@@ -15,7 +15,7 @@ RUN micromamba install -y -n base -f /tmp/env.yaml && \
 
 WORKDIR /app/peptonebench/datasets
 RUN wget https://zenodo.org/record/17306061/files/PeptoneDBs.tar.gz && \
-    tar -xzvf PeptoneDBs.tar.gz ./PeptoneDB-CS/PeptoneDB-CS.csv ./PeptoneDB-Integrative ./PeptoneDB-SAXS && \
+    tar -xzvf PeptoneDBs.tar.gz ./PeptoneDB-CS/PeptoneDB-CS.csv ./PeptoneDB-Integrative ./PeptoneDB-SAXS/PeptoneDB-SAXS.csv && \
     rm PeptoneDBs.tar.gz
 
 WORKDIR /app/integrativeanalysis
