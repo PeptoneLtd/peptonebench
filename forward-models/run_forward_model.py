@@ -21,6 +21,7 @@ from glob import glob
 import joblib
 import mdtraj as md
 import pandas as pd
+from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -101,13 +102,11 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def save_as_xtc_and_pdb(filename: str, generator_dir: str, output_dir: str, label: str = None) -> None:
-    """Load a trajectory file (PDB or HDF5) and save first frame as PDB and entire trajectory as XTC."""
-    if not (filename.endswith((".pdb", ".h5"))):
-        raise ValueError(f"Unsupported file format: {filename}")
+def save_as_xtc_and_pdb(filename: str, output_dir: str, label: str = None) -> None:
+    """Load a trajectory file (e.g. PDB or HDF5) and save first frame as PDB and entire trajectory as XTC."""
     if label is None:
         label = os.path.basename(filename).split(".")[0]
-    trj = md.load(os.path.join(generator_dir, filename))
+    trj = md.load(filename)
     if len(trj) == 1:
         logger.warning(f"only one frame found in {filename}, sure you want to save as trajectory?")
     trj[0].save(os.path.join(output_dir, label + ".pdb"))
@@ -152,20 +151,27 @@ def prepare_ensembles_custom(generator_dir: str, output_dir: str, generator_name
     if generator_name is None:
         generator_name = os.path.basename(generator_dir)
     if generator_name == "alphafold":
-        for pdb_file in sorted(
+        files = sorted(
             glob(f"{generator_dir}/*_unrelaxed_rank_001_alphafold2_ptm_model_*.pdb"),
             key=lambda x: (len(x), x),
-        ):
-            label = os.path.basename(pdb_file).split("_unrelaxed_")[0]
-            save_as_xtc_and_pdb(pdb_file, generator_dir, output_dir, label)
+        )
+
+        def process_file(file: str, output_dir: str = output_dir) -> None:
+            label = os.path.basename(file).split("_unrelaxed_")[0]
+            save_as_xtc_and_pdb(file, output_dir, label)
     elif generator_name == "bioemu":
-        for file in sorted(glob(f"{generator_dir}/sidechains/*/samples_sidechain_rec.xtc"), key=lambda x: (len(x), x)):
+        files = sorted(glob(f"{generator_dir}/sidechains/*/samples_sidechain_rec.xtc"), key=lambda x: (len(x), x))
+
+        def process_file(file: str, output_dir: str = output_dir) -> None:
             if os.path.exists(file.replace(".xtc", ".pdb")):
                 label = os.path.basename(os.path.dirname(file))
                 shutil.copy(file, os.path.join(output_dir, label + ".xtc"))
                 shutil.copy(file.replace(".xtc", ".pdb"), os.path.join(output_dir, label + ".pdb"))
     elif generator_name == "boltz2" or generator_name == "boltz1x":
-        for label in sorted(os.listdir(generator_dir), key=lambda x: (len(x), x)):
+        files = sorted(os.listdir(generator_dir), key=lambda x: (len(x), x))
+
+        def process_file(file: str, output_dir: str = output_dir) -> None:
+            label = file
             pattern = f"{generator_dir}/{label}/boltz_results_{label}/predictions/{label}/{label}_model_*.pdb"
             list_pdbs = sorted(glob(pattern), key=lambda x: (len(x), x))
             if list_pdbs:
@@ -173,35 +179,46 @@ def prepare_ensembles_custom(generator_dir: str, output_dir: str, generator_name
                 trj[0].save(os.path.join(output_dir, label + ".pdb"))
                 trj.save(os.path.join(output_dir, label + ".xtc"))
     elif generator_name == "esmfold":
-        for pdb_file in sorted(glob(os.path.join(generator_dir, "*", "*.pdb")), key=lambda x: (len(x), x)):
-            save_as_xtc_and_pdb(pdb_file, os.path.dirname(pdb_file), output_dir)
+        files = sorted(glob(os.path.join(generator_dir, "*", "*.pdb")), key=lambda x: (len(x), x))
+
+        def process_file(file: str, output_dir: str = output_dir) -> None:
+            save_as_xtc_and_pdb(file, output_dir)
     elif generator_name == "idpfold":
-        for file in sorted(glob(f"{generator_dir}/aa/*/samples_sidechain_rec.xtc"), key=lambda x: (len(x), x)):
+        files = sorted(glob(f"{generator_dir}/aa/*/samples_sidechain_rec.xtc"), key=lambda x: (len(x), x))
+
+        def process_file(file: str, output_dir: str = output_dir) -> None:
             if os.path.exists(file.replace(".xtc", ".pdb")):
                 label = os.path.basename(os.path.dirname(file))
                 shutil.copy(file, os.path.join(output_dir, label + ".xtc"))
                 shutil.copy(file.replace(".xtc", ".pdb"), os.path.join(output_dir, label + ".pdb"))
     elif generator_name == "idpgan":
-        for pdb_file in sorted(glob(os.path.join(generator_dir, "aa", "*.pdb")), key=lambda x: (len(x), x)):
-            save_as_xtc_and_pdb(pdb_file, os.path.dirname(pdb_file), output_dir)
+        files = sorted(glob(os.path.join(generator_dir, "aa", "*.pdb")), key=lambda x: (len(x), x))
+
+        def process_file(file: str, output_dir: str = output_dir) -> None:
+            save_as_xtc_and_pdb(file, output_dir)
     elif generator_name == "idpsam":
-        for file in sorted(glob(os.path.join(generator_dir, "*.aa.traj.dcd")), key=lambda x: (len(x), x)):
+        files = sorted(glob(os.path.join(generator_dir, "aa", "*.pdb")), key=lambda x: (len(x), x))
+
+        def process_file(file: str, output_dir: str = output_dir) -> None:
             if os.path.exists(file.replace("traj.dcd", "top.pdb")):
                 label = os.path.basename(file).split(".")[0]
                 trj = md.load(file, top=file.replace("traj.dcd", "top.pdb"))
                 trj[0].save(os.path.join(output_dir, label + ".pdb"))
                 trj.save(os.path.join(output_dir, label + ".xtc"))
     else:  # esmflow, idp-o, peptron
-        for file in sorted(glob(os.path.join(generator_dir, "*.h5")), key=lambda x: (len(x), x)):
-            save_as_xtc_and_pdb(file, os.path.dirname(file), output_dir)
-        for file in sorted(glob(os.path.join(generator_dir, "*.pdb")), key=lambda x: (len(x), x)):
-            xtc_file = file.replace(".pdb", ".xtc")
-            if os.path.exists(xtc_file):
+        files = sorted(glob(os.path.join(generator_dir, "*.pdb")), key=lambda x: (len(x), x))
+        if not files:
+            files = sorted(glob(os.path.join(generator_dir, "*.h5")), key=lambda x: (len(x), x))
+
+        def process_file(file: str, output_dir: str = output_dir) -> None:
+            if file.endswith(".pdb") and os.path.exists(xtc_file := file.replace(".pdb", ".xtc")):
                 logger.warning(f"found {xtc_file}, only copying files")
                 shutil.copy(file, os.path.join(output_dir, os.path.basename(file)))
                 shutil.copy(xtc_file, os.path.join(output_dir, os.path.basename(xtc_file)))
             else:
-                save_as_xtc_and_pdb(file, os.path.dirname(file), output_dir)
+                save_as_xtc_and_pdb(file, output_dir)
+
+    joblib.Parallel(n_jobs=min(N_JOBS, len(files)))(joblib.delayed(process_file)(file) for file in tqdm(files))
 
 
 def process_generator(
@@ -277,7 +294,7 @@ def process_generator(
         raise ValueError(
             f"some labels in '{generator_dir}' are not in the provided dataset: {set(labels) - set(db.index)}",
         )
-    joblib.Parallel(n_jobs=min(N_JOBS, len(labels)))(joblib.delayed(process_ensemble)(label) for label in labels)
+    joblib.Parallel(n_jobs=min(N_JOBS, len(labels)))(joblib.delayed(process_ensemble)(label) for label in tqdm(labels))
 
 
 def main() -> None:
@@ -291,6 +308,7 @@ def main() -> None:
             raise ValueError(f"predictor {args.predictor} not supported")
     db = pd.read_csv(args.dataset, index_col="label")
     logger.info(f"loaded dataset from {args.dataset} with {len(db)} entries")
+    logger.info(f"parallelization over N_JOBS={N_JOBS}")
     logger.info(f"processing directories: {args.generator_dir}")
     if args.overwrite:
         logger.info("overwrite=True: existing forward model prediction files will be recomputed")
