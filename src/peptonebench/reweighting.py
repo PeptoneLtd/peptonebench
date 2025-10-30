@@ -293,7 +293,7 @@ def benchmark_reweighting(
         assert len(valid_frames) == n_samples, f"{label:>7} - Mismatch length between ensemble and forward model data"
         nan_mask = nan_mask & valid_frames
     results["n_samples"] = sum(nan_mask)
-    results["RMSE"] = get_RMSE(std_delta[nan_mask])
+    results["RMSE"] = get_RMSE(std_delta[nan_mask], expt_shift)
     if sum(nan_mask) == 0:
         logger.warning(f"{label:>7} - no valid samples after filtering")
         return results
