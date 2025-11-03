@@ -159,6 +159,12 @@ def run_pepsi(
 
         # Check and save results
         all_dat_df = pd.read_csv(dat_file_i, sep="\s+", header=None, names=["q", "I(q)", "sigma", "I_fit"], comment="#")
+        if len(all_dat_df) == 0:
+            error_str = f"+++ ERROR processing {trajectory} at frame {i}: no data in output file +++"
+            logger.error(error_str)
+            with open(warning_log_file, "a") as warning_log:
+                warning_log.write(error_str + "\n")
+            continue
         if not np.allclose(all_dat_df["q"], expt_df["q"], atol=1e-6):
             logger.warning(
                 f"q values do not match for frame {i}, {np.abs(all_dat_df['q'] - expt_df['q']).max():.2e}"

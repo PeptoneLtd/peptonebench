@@ -290,6 +290,9 @@ def process_generator(
 
     labels = sorted([os.path.basename(file).replace(".xtc", "") for file in glob(os.path.join(generator_dir, "*.xtc"))])
     logger.info(f"found {len(labels):_} ensembles to process")
+    if len(labels) == 0:
+        logger.warning(f"no ensembles found in '{generator_dir}', nothing to do")
+        return
     if set(labels) - set(db.index):
         raise ValueError(
             f"some labels in '{generator_dir}' are not in the provided dataset: {set(labels) - set(db.index)}",
@@ -322,7 +325,10 @@ def main() -> None:
         if args.output_dir is None:
             processed_dir = generator_dir
         else:
-            processed_dir = os.path.join(args.output_dir, os.path.basename(generator_dir))
+            if len(args.generator_dir) == 1:
+                processed_dir = args.output_dir
+            else:
+                processed_dir = os.path.join(args.output_dir, os.path.basename(generator_dir))
         os.makedirs(processed_dir, exist_ok=True)
         process_generator(
             predictor=args.predictor,
