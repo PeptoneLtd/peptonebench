@@ -1,6 +1,9 @@
-# PeptoneBench: evaluating protein ensembles across the order-disorder continuum
+# PeptoneBench: Evaluating Protein Ensembles Across the Order-Disorder Continuum
 
-[![bioRxiv](https://img.shields.io/badge/bioRxiv-2025.10.18.680935-b31b1b.svg)](https://www.biorxiv.org/content/10.1101/2025.10.18.680935v2) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17306061.svg)](https://doi.org/10.5281/zenodo.17306061) [![Source Code](https://img.shields.io/badge/-PepTron-000000?style=flat&logo=github&logoColor=ffffff&labelColor=gray)](https://github.com/PeptoneLtd/PepTron) [![Source Code](https://img.shields.io/badge/-IDP--o-000000?style=flat&logo=github&logoColor=ffffff&labelColor=gray)](https://github.com/PeptoneLtd/IDP-o)
+[![bioRxiv](https://img.shields.io/badge/bioRxiv-2025.10.18.680935-b31b1b.svg)](https://www.biorxiv.org/content/10.1101/2025.10.18.680935v2)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17306061.svg)](https://doi.org/10.5281/zenodo.17306061)
+[![Source Code](https://img.shields.io/badge/-PepTron-000000?style=flat&logo=github&logoColor=ffffff&labelColor=gray)](https://github.com/PeptoneLtd/PepTron)
+[![Source Code](https://img.shields.io/badge/-IDP--o-000000?style=flat&logo=github&logoColor=ffffff&labelColor=gray)](https://github.com/PeptoneLtd/IDP-o)
 
 This repository contains all the code needed to run the the PeptoneBench benchmark to evaluate protein ensemble predictions against experimental data which covers structured as well as disordered proteins.
 For details see the paper [Advancing Protein Ensemble Predictions Across the Order-Disorder Continuum](https://doi.org/10.1101/2025.10.18.680935). 
