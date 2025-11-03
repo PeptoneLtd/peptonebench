@@ -48,6 +48,6 @@ ENV PYTHONPATH=/app/CSpred \
     PATH=/app/SPARTA+/bin:/app/pepsi:$PATH
 
 
-COPY *.py /app/peptonebench
+COPY *.py /app/peptonebench/
 
 ENTRYPOINT ["/usr/local/bin/_entrypoint.sh", "python", "/app/peptonebench/run_forward_model.py"]
