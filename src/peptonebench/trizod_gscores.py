@@ -21,7 +21,7 @@ from trizod.scoring.scoring import compute_pscores, convert_to_triplet_data, get
 def compute_gscores(
     cs: dict[tuple[int, str], float],  # {(res_num, atom_type): chemical_shift_value}
     sequence: str,
-    temperature: float = 289.0,
+    temperature: float = 298.0,
     pH: float = 7.0,
     ionic_strength: float = 0.1,
 ) -> np.ndarray:
