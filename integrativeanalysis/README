@@ -1,6 +1,3 @@
-Run get_extra_files.ipynb first to get additional required input files (fasta files, gscores, bmrb stats file).
-
 The RDC and PRE analyses notebooks require that the CS and SAXS reweighting calculations have been performed first.
 
 CSV files are provided with per-model and per-protein metrics before and after reweighting (csv_files_models.zip).
-
