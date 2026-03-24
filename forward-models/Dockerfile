@@ -33,9 +33,9 @@ RUN git clone https://github.com/THGLab/CSpred.git && \
     rm /tmp/models.tgz
 
 RUN ln -s /app/CSpred/bins/mTM-align/mTM-align /usr/local/bin/mTM-align && \
-    ln -s /app/mambauser/CSpred/bins/mkdssp /usr/local/bin/mkdssp && \
-    ln -s /app/mambauser/CSpred/bins/ncbi-blast-2.9.0+/bin/blastp /usr/local/bin/blastp && \
-    ln -s /app/mambauser/CSpred/bins/ncbi-blast-2.9.0+/bin/makeblastdb /usr/local/bin/makeblastdb
+    ln -s /app/CSpred/bins/mkdssp /usr/local/bin/mkdssp && \
+    ln -s /app/CSpred/bins/ncbi-blast-2.9.0+/bin/blastp /usr/local/bin/blastp && \
+    ln -s /app/CSpred/bins/ncbi-blast-2.9.0+/bin/makeblastdb /usr/local/bin/makeblastdb
 
 WORKDIR /app/peptonebench/datasets
 RUN wget https://zenodo.org/record/17306061/files/PeptoneDBs.tar.gz && \
