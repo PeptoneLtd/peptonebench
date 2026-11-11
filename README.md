@@ -13,6 +13,7 @@ For details see the paper [Advancing Protein Ensemble Predictions Across the Ord
 ## Description
 - `src/peptonebench`: main package to run reweighting and to obtain the benchmark scores. 
 - `datasets`: description files for the three PeptoneDBs and a script to download the full datasets.
+  The predicted G-scores in PeptoneDB-SAXS were computed with [ADOPT2g](https://github.com/PeptoneLtd/ADOPT2g). The G-scores in PeptoneDB-CS and PeptoneDB-Integrative are computed from the measured chemical shifts.
 - `notebooks`: code to recreate the PeptoneDB-CS from the [BMRB](https://bmrb.io) and the PeptoneDB-SAXS from the [SASBDB](https://www.sasbdb.org), and code for generating figures of the paper.
 - `forward-models`: code to process protein enmsebles to obtain the experimental chemical shifts values (CS) or scattering profiles (SAXS). Instructions and a separate Dockerfile are provided.
 - `integrativeanalysis`: all the code and notebooks needed to perform the analysis on the PeptoneDB-Integrative dataset. A separate Dockerfile is provided.
